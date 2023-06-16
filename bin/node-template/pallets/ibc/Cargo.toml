@@ -1,13 +1,13 @@
 [package]
-name = "pallet-template"
+name = "pallet-ibc"
 version = "4.0.0-dev"
-description = "FRAME pallet template for defining custom runtime logic."
-authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
-homepage = "https://substrate.io"
+description = "FRAME pallet for enabling BF-IBE in substrate"
+authors = ["Ideal Labs <https://github.com/ideal-lab5>"]
+homepage = "https://idealabs.network"
 edition = "2021"
-license = "MIT-0"
+license = "GPL-3.0"
 publish = false
-repository = "https://github.com/substrate-developer-hub/substrate-node-template/"
+repository = "https://github.com/ideal-lab5/substrate/"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
