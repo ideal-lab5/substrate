@@ -483,6 +483,7 @@ impl<T: SimpleSlotWorker<B> + Send + Sync, B: BlockT>
 pub trait InherentDataProviderExt {
 	/// The current slot that will be found in the [`InherentData`](`sp_inherents::InherentData`).
 	fn slot(&self) -> Slot;
+	fn secret(&self) -> u32;
 }
 
 /// Small macro for implementing `InherentDataProviderExt` for inherent data provider tuple.
@@ -494,6 +495,11 @@ macro_rules! impl_inherent_data_provider_ext_tuple {
 		{
 			fn slot(&self) -> Slot {
 				*self.0.deref()
+			}
+
+			fn secret(&self) -> u32 {
+				// 1u32
+				self.secret()
 			}
 		}
 	}

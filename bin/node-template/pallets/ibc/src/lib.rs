@@ -34,13 +34,10 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
-	// The pallet's runtime storage items.
-	// https://docs.substrate.io/main-docs/build/runtime-storage/
-	#[pallet::storage]
-	#[pallet::getter(fn something)]
-	// Learn more about declaring storage items:
-	// https://docs.substrate.io/main-docs/build/runtime-storage/#declaring-storage-items
-	pub type Something<T> = StorageValue<_, u32>;
+	// // The pallet's runtime storage items.
+	// // https://docs.substrate.io/main-docs/build/runtime-storage/
+	// #[pallet::storage]
+	// pub type SessionSecret<T> = StorageMap<_, BlakeTwo_128Concat, T::SessionId, T::SecretKey>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/main-docs/build/events-errors/
@@ -49,7 +46,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event documentation should end with an array that provides descriptive names for event
 		/// parameters. [something, who]
-		SomethingStored { something: u32, who: T::AccountId },
+		SessionSecretStored,
 	}
 
 	// Errors inform users that something went wrong.
@@ -71,16 +68,16 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::do_something())]
 		pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// https://docs.substrate.io/main-docs/build/origins/
-			let who = ensure_signed(origin)?;
+			// // Check that the extrinsic was signed and get the signer.
+			// // This function will return an error if the extrinsic is not signed.
+			// // https://docs.substrate.io/main-docs/build/origins/
+			// let who = ensure_signed(origin)?;
 
-			// Update storage.
-			<Something<T>>::put(something);
+			// // Update storage.
+			// <Something<T>>::put(something);
 
-			// Emit an event.
-			Self::deposit_event(Event::SomethingStored { something, who });
+			// // Emit an event.
+			// Self::deposit_event(Event::SomethingStored { something, who });
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
@@ -89,20 +86,21 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::cause_error())]
 		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+			// let _who = ensure_signed(origin)?;
 
-			// Read a value from storage.
-			match <Something<T>>::get() {
-				// Return an error if the value has not been set.
-				None => return Err(Error::<T>::NoneValue.into()),
-				Some(old) => {
-					// Increment the value read from storage; will error in the event of overflow.
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					// Update the value in storage with the incremented result.
-					<Something<T>>::put(new);
-					Ok(())
-				},
-			}
+			// // Read a value from storage.
+			// match <Something<T>>::get() {
+			// 	// Return an error if the value has not been set.
+			// 	None => return Err(Error::<T>::NoneValue.into()),
+			// 	Some(old) => {
+			// 		// Increment the value read from storage; will error in the event of overflow.
+			// 		let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
+			// 		// Update the value in storage with the incremented result.
+			// 		<Something<T>>::put(new);
+			// 		Ok(())
+			// 	},
+			// }
+			Ok(())
 		}
 	}
 }

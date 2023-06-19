@@ -212,6 +212,8 @@ where
 			.await
 			.map_err(Error::<B>::Inherent)?;
 
+		let secret = create_inherent_data_providers.secret();
+		assert!(secret == 1u32);
 		let slot_now = create_inherent_data_providers.slot();
 
 		// we add one to allow for some small drift.
@@ -234,7 +236,7 @@ where
 				if let Some(inner_body) = block.body.take() {
 					let new_block = B::new(pre_header.clone(), inner_body);
 
-					inherent_data.aura_replace_inherent_data(slot);
+					inherent_data.aura_replace_inherent_data((slot, secret));
 
 					// skip the inherents verification if the runtime API is old or not expected to
 					// exist.

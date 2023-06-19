@@ -23,21 +23,24 @@ pub const INHERENT_IDENTIFIER: InherentIdentifier = *b"auraslot";
 
 /// The type of the Aura inherent.
 pub type InherentType = sp_consensus_slots::Slot;
+pub type SInherentType = u32;
+
+pub type InherentTypeWrapper = (InherentType, SInherentType);
 
 /// Auxiliary trait to extract Aura inherent data.
 pub trait AuraInherentData {
 	/// Get aura inherent data.
-	fn aura_inherent_data(&self) -> Result<Option<InherentType>, Error>;
+	fn aura_inherent_data(&self) -> Result<Option<InherentTypeWrapper>, Error>;
 	/// Replace aura inherent data.
-	fn aura_replace_inherent_data(&mut self, new: InherentType);
+	fn aura_replace_inherent_data(&mut self, new: InherentTypeWrapper);
 }
 
 impl AuraInherentData for InherentData {
-	fn aura_inherent_data(&self) -> Result<Option<InherentType>, Error> {
+	fn aura_inherent_data(&self) -> Result<Option<InherentTypeWrapper>, Error> {
 		self.get_data(&INHERENT_IDENTIFIER)
 	}
 
-	fn aura_replace_inherent_data(&mut self, new: InherentType) {
+	fn aura_replace_inherent_data(&mut self, new: InherentTypeWrapper) {
 		self.replace_data(INHERENT_IDENTIFIER, &new);
 	}
 }
@@ -47,13 +50,14 @@ impl AuraInherentData for InherentData {
 #[cfg(feature = "std")]
 pub struct InherentDataProvider {
 	slot: InherentType,
+	secret: SInherentType,
 }
 
 #[cfg(feature = "std")]
 impl InherentDataProvider {
 	/// Create a new instance with the given slot.
-	pub fn new(slot: InherentType) -> Self {
-		Self { slot }
+	pub fn new(slot: InherentType, secret: SInherentType) -> Self {
+		Self { slot, secret }
 	}
 
 	/// Creates the inherent data provider by calculating the slot from the given
@@ -64,7 +68,12 @@ impl InherentDataProvider {
 	) -> Self {
 		let slot = InherentType::from_timestamp(timestamp, slot_duration);
 
-		Self { slot }
+		Self { slot, secret: 1u32 }
+	}
+
+	/// returns the `secret` of this InherentDataProvider
+	pub fn secret(&self) -> SInherentType {
+		self.secret
 	}
 }
 

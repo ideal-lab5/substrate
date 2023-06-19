@@ -128,6 +128,11 @@ where
 	P::Signature: Codec + TryFrom<Vec<u8>>,
 	P::Public: AppPublic,
 {
+	// TODO:
+	// 1. get my secret seed from the keystore?
+	// 2. get my identity to calcualte secret key
+	// 3. use dleq-vrf to generate pok to sign the block
+
 	let signature = keystore
 		.sign_with(
 			<AuthorityId<P> as AppCrypto>::ID,
