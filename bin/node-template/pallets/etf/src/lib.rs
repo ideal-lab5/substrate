@@ -81,7 +81,7 @@ pub mod pallet {
 		 fn check_inherent(
 			call: &Self::Call,
 			data: &InherentData,
-		) -> result::Result<(), Self::Error> {
+		) -> Result<(), Self::Error> {
 			// todo
 			Ok(())
 		}
