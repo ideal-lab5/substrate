@@ -3,7 +3,7 @@ resolver = "2"
 
 members = [
 	"bin/node-template/node",
-	"bin/node-template/pallets/template",
+	"bin/node-template/pallets/etf",
 	"bin/node-template/runtime",
 	"bin/node/bench",
 	"bin/node/cli",
@@ -195,6 +195,7 @@ members = [
 	"primitives/consensus/babe",
 	"primitives/consensus/beefy",
 	"primitives/consensus/common",
+	"primitives/consensus/etf",
 	"primitives/consensus/grandpa",
 	"primitives/consensus/pow",
 	"primitives/consensus/slots",

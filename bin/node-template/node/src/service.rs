@@ -245,8 +245,10 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 							*timestamp,
 							slot_duration,
 						);
+					
+					let secret = sp_consensus_etf::InherentDataProvider::create(1u32);
 
-					Ok((slot, timestamp))
+					Ok((slot, secret, timestamp))
 				},
 				force_authoring,
 				backoff_authoring_blocks,
