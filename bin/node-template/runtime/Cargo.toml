@@ -21,6 +21,9 @@ pallet-balances = { version = "4.0.0-dev", default-features = false, path = "../
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../../../frame/support" }
 pallet-grandpa = { version = "4.0.0-dev", default-features = false, path = "../../../frame/grandpa" }
 pallet-sudo = { version = "4.0.0-dev", default-features = false, path = "../../../frame/sudo" }
+pallet-session = { version = "4.0.0-dev", default-features = false, features = [
+	"historical",
+], path = "../../../frame/session" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../frame/system" }
 frame-try-runtime = { version = "0.10.0-dev", default-features = false, path = "../../../frame/try-runtime", optional = true }
 pallet-timestamp = { version = "4.0.0-dev", default-features = false, path = "../../../frame/timestamp" }
@@ -71,6 +74,7 @@ std = [
 	"pallet-grandpa/std",
 	"pallet-sudo/std",
 	"pallet-etf/std",
+	"pallet-session/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",

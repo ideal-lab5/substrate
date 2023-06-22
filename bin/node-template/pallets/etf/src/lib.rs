@@ -15,6 +15,9 @@ mod tests;
 mod benchmarking;
 pub mod weights;
 pub use weights::*;
+use sp_staking::SessionIndex;
+use frame_support::dispatch::Vec;
+
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -69,13 +72,13 @@ pub mod pallet {
  
 		 fn create_inherent(data: &InherentData) -> Option<Self::Call> {
 			let secret: u32 =
-				 data.get_data(&Self::INHERENT_IDENTIFIER).ok().flatten()?;
+				data.get_data(&Self::INHERENT_IDENTIFIER).ok().flatten()?;
 			
 			Some(Call::reveal_slot_secret { secret })
 		 }
  
 		 fn is_inherent(call: &Self::Call) -> bool {
-			 matches!(call, Call::reveal_slot_secret { .. })
+			matches!(call, Call::reveal_slot_secret { .. })
 		 }
 
 		 fn check_inherent(
@@ -106,5 +109,18 @@ pub mod pallet {
 			SlotSecrets::<T>::insert(current_block, secret);
 			Ok(())
 		}
+
+		// #[pallet::call_index(1)]
+		// #[pallet::weight(0)]
+		// pub fn submit_session_secrets(
+		// 	origin: OriginFor<T>,
+		// 	session_index: SessionIndex,
+		// 	secrets: Vec<u32>,
+		// ) -> DispatchResult {
+		// 	ensure_root(origin)?;
+		// 	// let current_block = frame_system::Pallet::<T>::block_number();
+		// 	// SlotSecrets::<T>::insert(current_block, secret);
+		// 	Ok(())
+		// }
 	}
 }

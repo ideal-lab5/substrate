@@ -246,6 +246,8 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 							slot_duration,
 						);
 					
+					// DRIEMWORKS::TODO: can we do:
+					//let secret = sp_consensus_etf::InherentDataProvider::create(client.runtime_api().secret(slot));
 					let secret = sp_consensus_etf::InherentDataProvider::create(1u32);
 
 					Ok((slot, secret, timestamp))

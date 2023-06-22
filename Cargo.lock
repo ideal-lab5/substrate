@@ -5582,6 +5582,7 @@ dependencies = [
  "futures",
  "jsonrpsee",
  "node-template-runtime",
+ "pallet-session",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
  "sc-basic-authorship",
@@ -5647,6 +5648,7 @@ dependencies = [
  "pallet-balances",
  "pallet-etf",
  "pallet-grandpa",
+ "pallet-session",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -6543,6 +6545,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
+ "pallet-session",
  "parity-scale-codec",
  "primitive-types",
  "scale-info",
@@ -6550,6 +6554,7 @@ dependencies = [
  "sp-inherents",
  "sp-io",
  "sp-runtime",
+ "sp-staking",
 ]
 
 [[package]]

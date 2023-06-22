@@ -616,6 +616,8 @@ impl_runtime_apis! {
 		fn authorities() -> Vec<AuraId> {
 			SubstrateTest::authorities().into_iter().map(|auth| AuraId::from(auth)).collect()
 		}
+
+		fn identity(_: Slot) -> sp_application_crypto::Vec<u8> { todo!() }
 	}
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {

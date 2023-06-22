@@ -273,7 +273,7 @@ pub fn build_aura_worker<P, B, C, PF, I, SO, L, BS, Error>(
 	SyncOracle = SO,
 	JustificationSyncLink = L,
 	Claim = P::Public,
-	AuxData = Vec<AuthorityId<P>>,
+	AuxData = (Vec<AuthorityId<P>>, u32),
 >
 where
 	B: BlockT,
@@ -348,7 +348,9 @@ where
 		Pin<Box<dyn Future<Output = Result<E::Proposer, ConsensusError>> + Send + 'static>>;
 	type Proposer = E::Proposer;
 	type Claim = P::Public;
-	type AuxData = Vec<AuthorityId<P>>;
+	// type AuxData = Vec<AuthorityId<P>>;
+	// For now I'll just use a u32... later on Vec<u8>
+	type AuxData = (Vec<AuthorityId<P>>, u32);
 
 	fn logging_target(&self) -> &'static str {
 		"aura"
@@ -359,16 +361,18 @@ where
 	}
 
 	fn aux_data(&self, header: &B::Header, _slot: Slot) -> Result<Self::AuxData, ConsensusError> {
-		authorities(
+		let secret = 1u32;
+		let authorities = authorities(
 			self.client.as_ref(),
 			header.hash(),
 			*header.number() + 1u32.into(),
 			&self.compatibility_mode,
-		)
+		)?;
+		Ok((authorities, secret))
 	}
 
 	fn authorities_len(&self, authorities: &Self::AuxData) -> Option<usize> {
-		Some(authorities.len())
+		Some(authorities.0.len())
 	}
 
 	async fn claim_slot(
@@ -377,13 +381,14 @@ where
 		slot: Slot,
 		authorities: &Self::AuxData,
 	) -> Option<Self::Claim> {
-		crate::standalone::claim_slot::<P>(slot, authorities, &self.keystore).await
+		crate::standalone::claim_slot::<P>(slot, &authorities.0, &self.keystore).await
 	}
 
 	fn pre_digest_data(&self, slot: Slot, _claim: &Self::Claim) -> Vec<sp_runtime::DigestItem> {
 		vec![crate::standalone::pre_digest::<P>(slot)]
 	}
 
+	// DRIEMWORKS::TODO pass body to seal, or at least the secret
 	async fn block_import_params(
 		&self,
 		header: B::Header,
@@ -391,13 +396,20 @@ where
 		body: Vec<B::Extrinsic>,
 		storage_changes: StorageChanges<<Self::BlockImport as BlockImport<B>>::Transaction, B>,
 		public: Self::Claim,
-		_authorities: Self::AuxData,
+		aux: Self::AuxData,
 	) -> Result<
 		sc_consensus::BlockImportParams<B, <Self::BlockImport as BlockImport<B>>::Transaction>,
 		ConsensusError,
 	> {
 		let signature_digest_item =
-			crate::standalone::seal::<_, P>(header_hash, &public, &self.keystore)?;
+			crate::standalone::dleq_seal::<_, P, B>(
+				header_hash, 
+				&public, 
+				&aux.1, // not really 
+				&self.keystore
+			)?;
+		// let signature_digest_item =
+		// 	crate::standalone::seal::<_, P>(header_hash, &public, &self.keystore)?;
 
 		let mut import_block = BlockImportParams::new(BlockOrigin::Own, header);
 		import_block.post_digests.push(signature_digest_item);
@@ -547,6 +559,19 @@ where
 		.ok()
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
+
+// /// get the slot secret from the runtime
+// fn slot_secret<A, B, C>(
+// 	client: &C,
+// 	parent_hash: B::Hash,
+// ) -> A 
+// A: Codec + Debug,
+// B: BlockT,
+// C: ProvideRuntimeApi<B>,
+// C::Api: AuraApi<B, A>,
+// {
+// 	client.runtime_api().secret(parent_hash).ok().ok_or(ConsensusError::InvalidSignature);
+// }
 
 #[cfg(test)]
 mod tests {

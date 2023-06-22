@@ -1,5 +1,6 @@
 use node_template_runtime::{
-	AccountId, AuraConfig, BalancesConfig, GrandpaConfig, RuntimeGenesisConfig, Signature,
+	AccountId, AuraConfig, BalancesConfig, 
+	GrandpaConfig, RuntimeGenesisConfig, Signature,
 	SudoConfig, SystemConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
@@ -7,6 +8,7 @@ use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use node_template_runtime::opaque::SessionKeys;
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -31,9 +33,17 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
+fn session_keys(aura: AuraId, grandpa: GrandpaId) -> SessionKeys {
+	SessionKeys { aura, grandpa }
+}
+
 /// Generate an Aura authority key.
-pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
-	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
+pub fn authority_keys_from_seed(s: &str) -> (AccountId, AuraId, GrandpaId) {
+	(
+		get_account_id_from_seed::<sr25519::Public>(s), 
+		get_from_seed::<AuraId>(s), 
+		get_from_seed::<GrandpaId>(s),
+	)
 }
 
 pub fn development_config() -> Result<ChainSpec, String> {
@@ -89,7 +99,10 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 			testnet_genesis(
 				wasm_binary,
 				// Initial PoA authorities
-				vec![authority_keys_from_seed("Alice"), authority_keys_from_seed("Bob")],
+				vec![
+					authority_keys_from_seed("Alice"), 
+					authority_keys_from_seed("Bob")
+				],
 				// Sudo account
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				// Pre-funded accounts
@@ -127,7 +140,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 /// Configure initial storage state for FRAME modules.
 fn testnet_genesis(
 	wasm_binary: &[u8],
-	initial_authorities: Vec<(AuraId, GrandpaId)>,
+	initial_authorities: Vec<(AccountId, AuraId, GrandpaId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
@@ -141,11 +154,18 @@ fn testnet_genesis(
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
+		// session: SessionConfig {
+		// 	keys: initial_authorities.iter().map(|x| {
+		// 		(x.0.clone(), x.0.clone(), session_keys(x.1.clone(), x.2.clone()))
+		// 	}).collect::<Vec<_>>(),
+		// },
 		aura: AuraConfig {
-			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+			authorities: initial_authorities.iter().map(|x| (x.1.clone())).collect(),
+			// authorities: vec![],
 		},
 		grandpa: GrandpaConfig {
-			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
+			authorities: initial_authorities.iter().map(|x| (x.2.clone(), 1)).collect(),
+			// authorities: vec![],
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.

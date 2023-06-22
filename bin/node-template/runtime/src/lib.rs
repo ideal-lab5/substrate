@@ -8,12 +8,16 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use pallet_grandpa::AuthorityId as GrandpaId;
 use sp_api::impl_runtime_apis;
-use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_consensus_aura::{
+	sr25519::AuthorityId as AuraId,
+	Slot,
+};
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, One, Verify,
+		AccountIdLookup, BlakeTwo256, Block as BlockT, ConvertInto, 
+		IdentifyAccount, NumberFor, OpaqueKeys, One, Verify,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
@@ -22,6 +26,7 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
+use codec::alloc::string::ToString;
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -223,6 +228,30 @@ impl pallet_grandpa::Config for Runtime {
 	type EquivocationReportSystem = ();
 }
 
+impl_opaque_keys! {
+	pub struct SessionKeys {
+		pub grandpa: Grandpa,
+		pub aura: Aura,
+	}
+}
+
+// parameter_types! {
+// 	pub const Period: u32 = MINUTES;
+// 	pub const Offset: u32 = 0;
+// }
+
+// impl pallet_session::Config for Runtime {
+// 	type ValidatorId = <Self as frame_system::Config>::AccountId;
+// 	type ValidatorIdOf = ConvertInto;
+// 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
+// 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+// 	type SessionManager = EtfModule;
+// 	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+// 	type Keys = opaque::SessionKeys;
+// 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
+// 	type RuntimeEvent = RuntimeEvent;
+// }
+
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
@@ -276,12 +305,6 @@ impl pallet_etf::Config for Runtime {
 	type WeightInfo = pallet_etf::weights::SubstrateWeight<Runtime>;
 }
 
-// /// Configure the pallet-template in pallets/template.
-// impl pallet_template::Config for Runtime {
-// 	type RuntimeEvent = RuntimeEvent;
-// 	type WeightInfo = pallet_template::weights::SubstrateWeight<Runtime>;
-// }
-
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -297,8 +320,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
-		// Include the custom logic from the pallet-template in the runtime.
-		// TemplateModule: pallet_template,
+		// Session: pallet_session,
 		EtfModule: pallet_etf,
 	}
 );
@@ -425,6 +447,19 @@ impl_runtime_apis! {
 		fn authorities() -> Vec<AuraId> {
 			Aura::authorities().into_inner()
 		}
+
+		fn identity(slot: Slot) -> Vec<u8> {
+			let authorities = Self::authorities();
+			let s = u64::from(slot);
+			let author: &AuraId = &authorities[s as usize % authorities.len()];
+			let mut id = author.to_string();
+			id.push_str(&s.to_string());
+			id.into()
+		}
+
+		// fn secret(slot: Slot) -> Vec<u8> {
+			
+		// }
 	}
 
 	impl sp_session::SessionKeys<Block> for Runtime {

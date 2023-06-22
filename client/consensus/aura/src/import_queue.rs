@@ -213,6 +213,7 @@ where
 			.map_err(Error::<B>::Inherent)?;
 
 		let slot_now = create_inherent_data_providers.slot();
+		// let slot_secret = create_inherent_data_providers.secret();
 
 		// we add one to allow for some small drift.
 		// FIXME #1019 in the future, alter this queue to allow deferring of
