@@ -51,7 +51,10 @@ use sp_consensus_slots::Slot;
 use sp_core::crypto::{Pair, Public};
 use sp_inherents::CreateInherentDataProviders;
 use sp_keystore::KeystorePtr;
-use sp_runtime::traits::{Block as BlockT, Header, Member, NumberFor};
+use sp_runtime::{
+	OpaqueExtrinsic,
+	traits::{Block as BlockT, Header, Member, NumberFor},
+};
 
 mod import_queue;
 pub mod standalone;
@@ -361,7 +364,10 @@ where
 	}
 
 	fn aux_data(&self, header: &B::Header, _slot: Slot) -> Result<Self::AuxData, ConsensusError> {
-		let secret = 1u32;
+		let public_key = 1u32;
+		// let secret = secret(
+		// 	self.client.as_ref(),
+		// );
 		let authorities = authorities(
 			self.client.as_ref(),
 			header.hash(),
@@ -388,7 +394,7 @@ where
 		vec![crate::standalone::pre_digest::<P>(slot)]
 	}
 
-	// DRIEMWORKS::TODO pass body to seal, or at least the secret
+	// DRIEMWORKS::TODO
 	async fn block_import_params(
 		&self,
 		header: B::Header,
@@ -401,6 +407,18 @@ where
 		sc_consensus::BlockImportParams<B, <Self::BlockImport as BlockImport<B>>::Transaction>,
 		ConsensusError,
 	> {
+		// Option 1: I *should* be able to get the secret key by decoding the extrinsic
+		// loop over, parse out the one to reveal_slot_secret and get params
+		// https://substrate.stackexchange.com/questions/770/decode-extrinsic-on-substrate-side
+		let secret_ext = &body[1];
+		// should be: 0407000<secret bytes>
+		let secret_ext_string = format!("{:?}", secret_ext);
+		let s = secret_ext_string.as_bytes();
+		// this will be 32 bytes when we get the real secret injected
+		let secret = &s[7..s.len()-1];
+		// now with this secret, we can prepare our proof + signature
+
+		// panic!("{:?}", secret);
 		let signature_digest_item =
 			crate::standalone::dleq_seal::<_, P, B>(
 				header_hash, 

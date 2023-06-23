@@ -184,6 +184,21 @@ where
 			ConsensusError::CannotSign(format!("Could not find key in keystore. Key: {:?}", public))
 		})?;
 
+	// let signature = self
+	// 	.keystore
+	// 	.sr25519_sign(
+	// 		<AuthorityId as AppCrypto>::ID, 
+	// 		public.as_ref(), 
+	// 		header_hash.as_ref()
+	// 	).map_err(|e| ConsensusError::CannotSign(
+	// 		format!("{}. Key: {:?}", e, public))
+	// 	)?.ok_or_else(|| {
+	// 		ConsensusError::CannotSign(format!(
+	// 			"Could not find key in keystore. Key: {:?}",
+	// 			public
+	// 		))
+	// 	})?;
+
 	// let client = client.runtime_api();
 	// let slot_identity = client.identity(slot);
 	// now I want to read the secret from the block itself...
