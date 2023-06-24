@@ -5648,6 +5648,7 @@ dependencies = [
  "pallet-balances",
  "pallet-etf",
  "pallet-grandpa",
+ "pallet-insecure-randomness-collective-flip",
  "pallet-session",
  "pallet-sudo",
  "pallet-timestamp",
@@ -6542,6 +6543,10 @@ dependencies = [
 name = "pallet-etf"
 version = "4.0.0-dev"
 dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-std",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6549,12 +6554,17 @@ dependencies = [
  "pallet-session",
  "parity-scale-codec",
  "primitive-types",
+ "rand_chacha 0.3.1",
  "scale-info",
+ "sp-ark-bls12-381 0.4.0-beta (git+https://github.com/paritytech/ark-substrate)",
+ "sp-ark-models 0.4.0-beta",
  "sp-core",
+ "sp-crypto-ec-utils",
  "sp-inherents",
  "sp-io",
  "sp-runtime",
  "sp-staking",
+ "sp-std",
 ]
 
 [[package]]
@@ -10908,7 +10918,7 @@ dependencies = [
  "ark-scale",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models",
+ "sp-ark-models 0.4.0",
 ]
 
 [[package]]
@@ -10923,7 +10933,21 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models",
+ "sp-ark-models 0.4.0",
+]
+
+[[package]]
+name = "sp-ark-bls12-381"
+version = "0.4.0-beta"
+source = "git+https://github.com/paritytech/ark-substrate#2481cb1f4050550d6ace5521c664f41a1fbc8fad"
+dependencies = [
+ "ark-bls12-381",
+ "ark-ff",
+ "ark-scale",
+ "ark-serialize",
+ "ark-std",
+ "parity-scale-codec",
+ "sp-ark-models 0.4.0-beta",
 ]
 
 [[package]]
@@ -10937,7 +10961,7 @@ dependencies = [
  "ark-scale",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models",
+ "sp-ark-models 0.4.0",
 ]
 
 [[package]]
@@ -10953,7 +10977,7 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models",
+ "sp-ark-models 0.4.0",
 ]
 
 [[package]]
@@ -10969,8 +10993,24 @@ dependencies = [
  "ark-scale",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-bls12-381",
- "sp-ark-models",
+ "sp-ark-bls12-381 0.4.0-beta (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-ark-models 0.4.0",
+]
+
+[[package]]
+name = "sp-ark-models"
+version = "0.4.0-beta"
+source = "git+https://github.com/paritytech/ark-substrate#2481cb1f4050550d6ace5521c664f41a1fbc8fad"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-serialize",
+ "ark-std",
+ "derivative",
+ "getrandom 0.2.9",
+ "itertools",
+ "num-traits",
+ "zeroize",
 ]
 
 [[package]]
@@ -11247,11 +11287,11 @@ dependencies = [
  "ark-std",
  "parity-scale-codec",
  "sp-ark-bls12-377",
- "sp-ark-bls12-381",
+ "sp-ark-bls12-381 0.4.0-beta (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-ark-bw6-761",
  "sp-ark-ed-on-bls12-377",
  "sp-ark-ed-on-bls12-381-bandersnatch",
- "sp-ark-models",
+ "sp-ark-models 0.4.0",
  "sp-io",
  "sp-runtime-interface",
  "sp-std",

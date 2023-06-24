@@ -374,7 +374,7 @@ where
 			*header.number() + 1u32.into(),
 			&self.compatibility_mode,
 		)?;
-		Ok((authorities, secret))
+		Ok((authorities, public_key))
 	}
 
 	fn authorities_len(&self, authorities: &Self::AuxData) -> Option<usize> {

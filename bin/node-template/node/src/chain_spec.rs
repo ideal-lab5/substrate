@@ -1,7 +1,7 @@
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, 
 	GrandpaConfig, RuntimeGenesisConfig, Signature,
-	SudoConfig, SystemConfig, WASM_BINARY,
+	SudoConfig, SystemConfig, EtfConfig, SessionConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -154,18 +154,21 @@ fn testnet_genesis(
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
-		// session: SessionConfig {
-		// 	keys: initial_authorities.iter().map(|x| {
-		// 		(x.0.clone(), x.0.clone(), session_keys(x.1.clone(), x.2.clone()))
-		// 	}).collect::<Vec<_>>(),
-		// },
+		session: SessionConfig {
+			keys: initial_authorities.iter().map(|x| {
+				(x.0.clone(), x.0.clone(), session_keys(x.1.clone(), x.2.clone()))
+			}).collect::<Vec<_>>(),
+		},
 		aura: AuraConfig {
-			authorities: initial_authorities.iter().map(|x| (x.1.clone())).collect(),
-			// authorities: vec![],
+			// authorities: initial_authorities.iter().map(|x| (x.1.clone())).collect(),
+			authorities: vec![],
 		},
 		grandpa: GrandpaConfig {
-			authorities: initial_authorities.iter().map(|x| (x.2.clone(), 1)).collect(),
-			// authorities: vec![],
+			// authorities: initial_authorities.iter().map(|x| (x.2.clone(), 1)).collect(),
+			authorities: vec![],
+		},
+		etf: EtfConfig {
+			initial_validators: initial_authorities.iter().map(|x| x.0.clone()).collect::<Vec<_>>(),
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.

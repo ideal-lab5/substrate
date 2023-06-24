@@ -29,6 +29,7 @@ pub mod ed_on_bls12_381_bandersnatch;
 mod utils;
 
 use sp_runtime_interface::runtime_interface;
+use ark_std::vec::Vec;
 
 /// Interfaces for working with elliptic curves related types from within the runtime.
 /// All type are (de-)serialized through the wrapper types from the ark-scale trait,

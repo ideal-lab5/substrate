@@ -235,22 +235,23 @@ impl_opaque_keys! {
 	}
 }
 
-// parameter_types! {
-// 	pub const Period: u32 = MINUTES;
-// 	pub const Offset: u32 = 0;
-// }
+parameter_types! {
+	pub const Period: u32 = MINUTES;
+	pub const Offset: u32 = 0;
+}
 
-// impl pallet_session::Config for Runtime {
-// 	type ValidatorId = <Self as frame_system::Config>::AccountId;
-// 	type ValidatorIdOf = ConvertInto;
-// 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-// 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-// 	type SessionManager = EtfModule;
-// 	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-// 	type Keys = opaque::SessionKeys;
-// 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
-// 	type RuntimeEvent = RuntimeEvent;
-// }
+impl pallet_session::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	type ValidatorIdOf = pallet_etf::ValidatorOf<Self>;
+	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
+	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	type SessionManager = Etf;
+	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = opaque::SessionKeys;
+	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
+	// type RuntimeEvent = RuntimeEvent;
+}
 
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
@@ -300,9 +301,13 @@ impl pallet_sudo::Config for Runtime {
 	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
 
+impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
+
 impl pallet_etf::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_etf::weights::SubstrateWeight<Runtime>;
+	type MaxAuthorities  = ConstU32<32>;
+	type Randomness = RandomnessCollectiveFlip;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -320,8 +325,9 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
-		// Session: pallet_session,
-		EtfModule: pallet_etf,
+		Session: pallet_session,
+		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
+		Etf: pallet_etf,
 	}
 );
 

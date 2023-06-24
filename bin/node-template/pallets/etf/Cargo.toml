@@ -17,6 +17,17 @@ log = { version = "0.4.17", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.2.2", default-features = false, features = [
 	"derive",
 ] }
+rand_chacha = { version = "0.3.1", default-features = false }
+#arkworks dependencies
+ark-std = { version = "0.4.0", default-features = false }
+ark-ff = { version = "0.4.0", default-features = false }
+ark-poly = { version = "0.4.0", default-features = false }
+ark-ec = { version = "0.4.0", default-features = false }
+sp-ark-bls12-381 = { git = 'https://github.com/paritytech/ark-substrate', default-features = false }
+sp-ark-models = { git = "https://github.com/paritytech/ark-substrate.git", default-features = false }
+#sp-bls12-381 = { git = "https://github.com/paritytech/sp-curves.git", features = ["curve"], default-features = false }
+#sp-arkworks =  { git = "https://github.com/paritytech/substrate.git", default-features = false }
+
 primitive-types = { version = "0.12.1", default-features = false }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true, path = "../../../../frame/benchmarking" }
@@ -29,11 +40,13 @@ pallet-session = { version = "4.0.0-dev", default-features = false, features = [
 
 sp-inherents = { version = "4.0.0-dev", path = "../../../../primitives/inherents", default-features = false }
 sp-staking = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/staking", features = ["serde"] }
+sp-std = { version = "8.0.0", default-features = false, path = "../../../../primitives/std" }
+sp-runtime = { version = "24.0.0", default-features = false, path = "../../../../primitives/runtime" }
+sp-crypto-ec-utils = { version = "0.4.0", default-features = false, path = "../../../../primitives/crypto/ec-utils" }
 
 [dev-dependencies]
 sp-core = { version = "21.0.0", path = "../../../../primitives/core" }
 sp-io = { version = "23.0.0", path = "../../../../primitives/io" }
-sp-runtime = { version = "24.0.0", path = "../../../../primitives/runtime" }
 
 [features]
 default = ["std"]
@@ -46,7 +59,18 @@ std = [
 	"primitive-types/std",
 	"sp-inherents/std",
 	"sp-staking/std",
+	"sp-std/std",
+	"sp-runtime/std",
 	"pallet-session/std",
+	"rand_chacha/std",
+	"sp-crypto-ec-utils/std",
+	"sp-ark-bls12-381/std",
+	"sp-ark-models/std",
+	#"sp-bls12-381/std",
+	"ark-std/std",
+	"ark-ff/std",
+	"ark-ec/std",
+	"ark-poly/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
 try-runtime = ["frame-support/try-runtime"]

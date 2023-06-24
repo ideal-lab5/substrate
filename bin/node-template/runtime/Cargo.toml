@@ -24,6 +24,7 @@ pallet-sudo = { version = "4.0.0-dev", default-features = false, path = "../../.
 pallet-session = { version = "4.0.0-dev", default-features = false, features = [
 	"historical",
 ], path = "../../../frame/session" }
+pallet-insecure-randomness-collective-flip = { version = "4.0.0-dev", default-features = false, path = "../../../frame/insecure-randomness-collective-flip" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../frame/system" }
 frame-try-runtime = { version = "0.10.0-dev", default-features = false, path = "../../../frame/try-runtime", optional = true }
 pallet-timestamp = { version = "4.0.0-dev", default-features = false, path = "../../../frame/timestamp" }
@@ -76,6 +77,7 @@ std = [
 	"pallet-etf/std",
 	"pallet-session/std",
 	"pallet-timestamp/std",
+	"pallet-insecure-randomness-collective-flip/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"sp-api/std",
@@ -102,6 +104,7 @@ runtime-benchmarks = [
 	"pallet-sudo/runtime-benchmarks",
 	"pallet-etf/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
+	"pallet-insecure-randomness-collective-flip/std",
 	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
@@ -116,4 +119,5 @@ try-runtime = [
 	"pallet-etf/try-runtime",
 	"pallet-timestamp/try-runtime",
 	"pallet-transaction-payment/try-runtime",
+	"pallet-insecure-randomness-collective-flip/std",
 ]
