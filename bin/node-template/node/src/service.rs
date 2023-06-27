@@ -9,6 +9,7 @@ use sc_service::{error::Error as ServiceError, Configuration, TaskManager, WarpS
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
+use sp_runtime::offchain::storage::StorageValueRef;
 
 // Our native executor instance.
 pub struct ExecutorDispatch;
@@ -256,7 +257,8 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 					//	keystore_container.keystore(),
 					//  client.runtime_api().secret(slot)
 				    // );
-					// let s = client.runtime_api().secret(slot.clone());
+					// let _s = client.runtime_api().identity();
+
 					let secret = sp_consensus_etf::InherentDataProvider::create(vec![1u8]);
 
 					Ok((slot, secret, timestamp))

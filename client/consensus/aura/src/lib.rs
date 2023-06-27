@@ -578,39 +578,39 @@ where
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 
-/// get the slot secret from the runtime
-fn slot_secret<A, B, C>(
-	client: &C,
-	parent_hash: B::Hash,
-) -> A 
-A: Codec + Debug,
-B: BlockT,
-C: ProvideRuntimeApi<B>,
-C::Api: AuraApi<B, A>,
-{
-	CompatibilityMode::None => {},
-		// Use `initialize_block` until we hit the block that should disable the mode.
-		CompatibilityMode::UseInitializeBlock { until } =>
-			if *until > context_block_number {
-				runtime_api
-					.initialize_block(
-						parent_hash,
-						&B::Header::new(
-							context_block_number,
-							Default::default(),
-							Default::default(),
-							parent_hash,
-							Default::default(),
-						),
-					)
-					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
-			},
-	}
-	// DRIEMWORKS::TODO : Add new error 
-	client.runtime_api()
-		.secret(parent_hash).ok()
-		.ok_or(ConsensusError::InvalidSignature)
-}
+// /// get the slot secret from the runtime
+// fn slot_secret<A, B, C>(
+// 	client: &C,
+// 	parent_hash: B::Hash,
+// ) -> A 
+// A: Codec + Debug,
+// B: BlockT,
+// C: ProvideRuntimeApi<B>,
+// C::Api: AuraApi<B, A>,
+// {
+// 	CompatibilityMode::None => {},
+// 		// Use `initialize_block` until we hit the block that should disable the mode.
+// 		CompatibilityMode::UseInitializeBlock { until } =>
+// 			if *until > context_block_number {
+// 				runtime_api
+// 					.initialize_block(
+// 						parent_hash,
+// 						&B::Header::new(
+// 							context_block_number,
+// 							Default::default(),
+// 							Default::default(),
+// 							parent_hash,
+// 							Default::default(),
+// 						),
+// 					)
+// 					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
+// 			},
+// 	}
+// 	// DRIEMWORKS::TODO : Add new error 
+// 	client.runtime_api()
+// 		.secret(parent_hash).ok()
+// 		.ok_or(ConsensusError::InvalidSignature)
+// }
 
 #[cfg(test)]
 mod tests {

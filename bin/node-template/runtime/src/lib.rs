@@ -523,9 +523,9 @@ impl_runtime_apis! {
 			id.into()
 		}
 
-		fn secret(slot: Slot) -> Vec<u8> {
-			Etf::slot_secrets(slot)
-		}
+		// fn secret(slot: Slot) -> Vec<u8> {
+		// 	Etf::slot_secrets(slot)
+		// }
 	}
 
 	impl sp_session::SessionKeys<Block> for Runtime {
