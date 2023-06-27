@@ -20,7 +20,7 @@
 
 use crate::utils::{msm_te_generic, mul_projective_te_generic};
 use ark_ed_on_bls12_377::EdwardsConfig;
-use sp_std::vec::Vec;
+use ark_std::vec::Vec;
 
 /// Compute a multi scalar mulitplication for twisted_edwards through
 /// arkworks.

@@ -249,13 +249,15 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 					// DRIEMWORKS::TODO: can we do:
 					// I can probably do the decryption here
 					// 1. get encrypted secret using runtime_api
+					// let encoded_secret = client.runtime_api().secret(slot);
 					// 2. decrypt the secret here using the keystore?
 					// 3. then when signing the block, decode the extrinsic and get the secret
 					//let secret = sp_consensus_etf::InherentDataProvider::create(
 					//	keystore_container.keystore(),
 					//  client.runtime_api().secret(slot)
 				    // );
-					let secret = sp_consensus_etf::InherentDataProvider::create(2u32);
+					// let s = client.runtime_api().secret(slot.clone());
+					let secret = sp_consensus_etf::InherentDataProvider::create(vec![1u8]);
 
 					Ok((slot, secret, timestamp))
 				},

@@ -18,16 +18,21 @@ codec = { package = "parity-scale-codec", version = "3.2.2", default-features = 
 	"derive",
 ] }
 rand_chacha = { version = "0.3.1", default-features = false }
-#arkworks dependencies
-ark-std = { version = "0.4.0", default-features = false }
-ark-ff = { version = "0.4.0", default-features = false }
-ark-poly = { version = "0.4.0", default-features = false }
-ark-ec = { version = "0.4.0", default-features = false }
-sp-ark-bls12-381 = { git = 'https://github.com/paritytech/ark-substrate', default-features = false }
-sp-ark-models = { git = "https://github.com/paritytech/ark-substrate.git", default-features = false }
-#sp-bls12-381 = { git = "https://github.com/paritytech/sp-curves.git", features = ["curve"], default-features = false }
-#sp-arkworks =  { git = "https://github.com/paritytech/substrate.git", default-features = false }
 
+sp-ark-bls12-381 = { version = "0.4.0-beta", default-features = false }
+
+#sp-bls12-381 = { git = "https://github.com/paritytech/sp-curves.git", features = ["curve"], default-features = false }
+#sp-ark-models = { version = "0.4.0", default-features = false }
+#ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+ark-serialize = { version = "0.4.0", features = [ "derive" ], default-features = false }
+ark-ff = { version = "0.4.0", default-features = false }
+ark-ec = { version = "0.4.0", default-features = false }
+ark-std = { version = "0.4.0", default-features = false }
+ark-poly = { version = "0.4.0", default-features = false }
+ark-crypto-primitives = { version = "0.4.0", features = [ "r1cs", "snark" ], default-features = false } 
+ark-scale = { git = "https://github.com/w3f/ark-scale", features = ["hazmat"], default-features = false }
+ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+sp-io = { version = "23.0.0", path = "../../../../primitives/io", default-features = false }
 primitive-types = { version = "0.12.1", default-features = false }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true, path = "../../../../frame/benchmarking" }
@@ -43,10 +48,7 @@ sp-staking = { version = "4.0.0-dev", default-features = false, path = "../../..
 sp-std = { version = "8.0.0", default-features = false, path = "../../../../primitives/std" }
 sp-runtime = { version = "24.0.0", default-features = false, path = "../../../../primitives/runtime" }
 sp-crypto-ec-utils = { version = "0.4.0", default-features = false, path = "../../../../primitives/crypto/ec-utils" }
-
-[dev-dependencies]
-sp-core = { version = "21.0.0", path = "../../../../primitives/core" }
-sp-io = { version = "23.0.0", path = "../../../../primitives/io" }
+sp-core = { version = "21.0.0", path = "../../../../primitives/core", default-features = false }
 
 [features]
 default = ["std"]
@@ -61,16 +63,23 @@ std = [
 	"sp-staking/std",
 	"sp-std/std",
 	"sp-runtime/std",
+	"sp-io/std",
+	"sp-core/std",
 	"pallet-session/std",
 	"rand_chacha/std",
-	"sp-crypto-ec-utils/std",
 	"sp-ark-bls12-381/std",
-	"sp-ark-models/std",
+	"sp-crypto-ec-utils/std",
 	#"sp-bls12-381/std",
-	"ark-std/std",
+	#"sp-ark-models/std",
+	#"ark-bls12-381/std",
+	"ark-serialize/std",
 	"ark-ff/std",
 	"ark-ec/std",
+	"ark-std/std",
+	"ark-crypto-primitives/std",
+	"ark-scale/std",
 	"ark-poly/std",
+	"ark-bls12-381/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
 try-runtime = ["frame-support/try-runtime"]

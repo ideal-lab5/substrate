@@ -341,6 +341,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-crypto-primitives"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f3a13b34da09176a8baba701233fdffbaa7c1b1192ce031a3da4e55ce1f1a56"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-r1cs-std",
+ "ark-relations",
+ "ark-serialize",
+ "ark-snark",
+ "ark-std",
+ "blake2",
+ "derivative",
+ "digest 0.10.7",
+ "sha2 0.10.6",
+ "tracing",
+]
+
+[[package]]
 name = "ark-ec"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -479,6 +499,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-scale"
+version = "0.4.0-beta"
+source = "git+https://github.com/w3f/ark-scale#b45db6711963b268e0566c8317c9b51e290c4516"
+dependencies = [
+ "ark-ec",
+ "ark-serialize",
+ "ark-std",
+ "parity-scale-codec",
+]
+
+[[package]]
 name = "ark-serialize"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -499,6 +530,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "ark-snark"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84d3cc6833a335bb8a600241889ead68ee89a3cf8448081fb7694c0fe503da63"
+dependencies = [
+ "ark-ff",
+ "ark-relations",
+ "ark-serialize",
+ "ark-std",
 ]
 
 [[package]]
@@ -5644,6 +5687,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
+ "log",
  "pallet-aura",
  "pallet-balances",
  "pallet-etf",
@@ -6543,9 +6587,13 @@ dependencies = [
 name = "pallet-etf"
 version = "4.0.0-dev"
 dependencies = [
+ "ark-bls12-381",
+ "ark-crypto-primitives",
  "ark-ec",
  "ark-ff",
  "ark-poly",
+ "ark-scale 0.4.0-beta",
+ "ark-serialize",
  "ark-std",
  "frame-benchmarking",
  "frame-support",
@@ -6556,8 +6604,7 @@ dependencies = [
  "primitive-types",
  "rand_chacha 0.3.1",
  "scale-info",
- "sp-ark-bls12-381 0.4.0-beta (git+https://github.com/paritytech/ark-substrate)",
- "sp-ark-models 0.4.0-beta",
+ "sp-ark-bls12-381",
  "sp-core",
  "sp-crypto-ec-utils",
  "sp-inherents",
@@ -7673,9 +7720,9 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec"
-version = "3.5.0"
+version = "3.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ddb756ca205bd108aee3c62c6d3c994e1df84a59b9d6d4a5ea42ee1fd5a9a28"
+checksum = "2287753623c76f953acd29d15d8100bcab84d29db78fb6f352adb3c53e83b967"
 dependencies = [
  "arrayvec 0.7.2",
  "bitvec",
@@ -7688,9 +7735,9 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec-derive"
-version = "3.1.4"
+version = "3.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86b26a931f824dd4eca30b3e43bb4f31cd5f0d3a403c5f5ff27106b805bfde7b"
+checksum = "2b6937b5e67bfba3351b87b040d48352a2fcb6ad72f81855412ce97b45c8f110"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -8174,9 +8221,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.59"
+version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aeca18b86b413c660b781aa319e4e2648a3e6f9eadc9b47e9038e6fe9f3451b"
+checksum = "7b368fba921b0dce7e60f5e04ec15e565b3303972b42bcfde1d0713b881959eb"
 dependencies = [
  "unicode-ident",
 ]
@@ -10554,18 +10601,18 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.163"
+version = "1.0.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2113ab51b87a539ae008b5c6c02dc020ffa39afd2d83cffcb3f4eb2722cebec2"
+checksum = "9e8c8cf938e98f769bc164923b06dce91cea1751522f46f8466461af04c9027d"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.163"
+version = "1.0.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c805777e3930c8883389c602315a24224bcc738b63905ef87cd1420353ea93e"
+checksum = "d9735b638ccc51c28bf6914d90a2e9725b377144fc612c49a611fddd1b631d68"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -10915,10 +10962,10 @@ dependencies = [
  "ark-bls12-377",
  "ark-ff",
  "ark-r1cs-std",
- "ark-scale",
+ "ark-scale 0.0.3",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models 0.4.0",
+ "sp-ark-models",
 ]
 
 [[package]]
@@ -10929,25 +10976,11 @@ checksum = "3352feef6c9c34022fa766a0c9a86a88a83d280a3e5b34781a1a9af98377a130"
 dependencies = [
  "ark-bls12-381",
  "ark-ff",
- "ark-scale",
+ "ark-scale 0.0.3",
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models 0.4.0",
-]
-
-[[package]]
-name = "sp-ark-bls12-381"
-version = "0.4.0-beta"
-source = "git+https://github.com/paritytech/ark-substrate#2481cb1f4050550d6ace5521c664f41a1fbc8fad"
-dependencies = [
- "ark-bls12-381",
- "ark-ff",
- "ark-scale",
- "ark-serialize",
- "ark-std",
- "parity-scale-codec",
- "sp-ark-models 0.4.0-beta",
+ "sp-ark-models",
 ]
 
 [[package]]
@@ -10958,10 +10991,10 @@ checksum = "2bf069165e230aef3c4680edea2d8ab3caa89c039e0b61fad2b8e061fb393668"
 dependencies = [
  "ark-bw6-761",
  "ark-ff",
- "ark-scale",
+ "ark-scale 0.0.3",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models 0.4.0",
+ "sp-ark-models",
 ]
 
 [[package]]
@@ -10973,11 +11006,11 @@ dependencies = [
  "ark-ed-on-bls12-377",
  "ark-ff",
  "ark-r1cs-std",
- "ark-scale",
+ "ark-scale 0.0.3",
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-models 0.4.0",
+ "sp-ark-models",
 ]
 
 [[package]]
@@ -10990,27 +11023,11 @@ dependencies = [
  "ark-ed-on-bls12-381-bandersnatch",
  "ark-ff",
  "ark-r1cs-std",
- "ark-scale",
+ "ark-scale 0.0.3",
  "ark-std",
  "parity-scale-codec",
- "sp-ark-bls12-381 0.4.0-beta (registry+https://github.com/rust-lang/crates.io-index)",
- "sp-ark-models 0.4.0",
-]
-
-[[package]]
-name = "sp-ark-models"
-version = "0.4.0-beta"
-source = "git+https://github.com/paritytech/ark-substrate#2481cb1f4050550d6ace5521c664f41a1fbc8fad"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "derivative",
- "getrandom 0.2.9",
- "itertools",
- "num-traits",
- "zeroize",
+ "sp-ark-bls12-381",
+ "sp-ark-models",
 ]
 
 [[package]]
@@ -11282,16 +11299,16 @@ dependencies = [
  "ark-ed-on-bls12-377",
  "ark-ed-on-bls12-381-bandersnatch",
  "ark-ff",
- "ark-scale",
+ "ark-scale 0.0.3",
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",
  "sp-ark-bls12-377",
- "sp-ark-bls12-381 0.4.0-beta (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-ark-bls12-381",
  "sp-ark-bw6-761",
  "sp-ark-ed-on-bls12-377",
  "sp-ark-ed-on-bls12-381-bandersnatch",
- "sp-ark-models 0.4.0",
+ "sp-ark-models",
  "sp-io",
  "sp-runtime-interface",
  "sp-std",

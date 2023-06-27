@@ -22,7 +22,7 @@ use codec::Encode;
 pub const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
 
 /// the type of the inherent
-pub type InherentType = u32;
+pub type InherentType = Vec<u8>;
 
 /// Provides the slot secret inherent data for `EtF`.
 /// implements [`InherentDataProvider`]
@@ -47,7 +47,7 @@ impl sp_inherents::InherentDataProvider for InherentDataProvider {
         &self, 
         inherent_data: &mut InherentData
     ) -> Result<(), Error> {
-        if let Some(x) = self.0 {
+        if let Some(x) = &self.0 {
 		    inherent_data.put_data(INHERENT_IDENTIFIER, &x)?;
         };
         Ok(())

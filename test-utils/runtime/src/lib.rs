@@ -617,7 +617,9 @@ impl_runtime_apis! {
 			SubstrateTest::authorities().into_iter().map(|auth| AuraId::from(auth)).collect()
 		}
 
+		// DRIEMWORKS::TODO
 		fn identity(_: Slot) -> sp_application_crypto::Vec<u8> { todo!() }
+		fn secret(_: Slot) -> sp_application_crypto::Vec<u8> { todo!() }
 	}
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {

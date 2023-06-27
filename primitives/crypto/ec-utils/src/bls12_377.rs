@@ -23,7 +23,7 @@ use crate::utils::{
 	final_exponentiation_generic, msm_sw_generic, mul_projective_generic, multi_miller_loop_generic,
 };
 use ark_bls12_377::{g1, g2, Bls12_377};
-use sp_std::vec::Vec;
+use ark_std::vec::Vec;
 
 /// Compute a multi miller loop through arkworks
 pub fn multi_miller_loop(a: Vec<u8>, b: Vec<u8>) -> Result<Vec<u8>, ()> {

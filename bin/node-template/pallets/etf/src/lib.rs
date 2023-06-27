@@ -10,6 +10,11 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+pub(crate) mod bls12_381;
+
+pub(crate) use ark_scale::hazmat::ArkScaleProjective;
+const HOST_CALL: ark_scale::Usage = ark_scale::HOST_CALL;
+pub(crate) type ArkScale<T> = ark_scale::ArkScale<T, HOST_CALL>;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -17,6 +22,7 @@ pub mod weights;
 pub use weights::*;
 use sp_staking::SessionIndex;
 use codec::{Encode, Decode};
+use frame_system::offchain::{SendSignedTransaction};
 use frame_support::{
 	dispatch::Vec, BoundedSlice,
 	traits::{
@@ -24,38 +30,58 @@ use frame_support::{
 		ValidatorRegistration, ValidatorSet, ValidatorSetWithIdentification,
 	},
 };
-use sp_runtime::traits::{Convert, TrailingZeroInput};
+use sp_runtime::{
+	KeyTypeId,
+	traits::{Convert, TrailingZeroInput},
+};
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaCha20Rng,
 };
-use ark_ec::{
-    AffineRepr, CurveGroup,
-    pairing::Pairing,
-};
-use ark_ff::UniformRand;
 use ark_poly::{
     polynomial::univariate::DensePolynomial,
     DenseUVPolynomial, Polynomial,
 };
-use ark_std::{
-	vec,
-	string::ToString,
-    ops::Mul,
-    rand::Rng,
-    Zero,
-};
-use sp_ark_ec_utils::{
-
-};
-// use sp_ark_models::Group;
+use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_ff::{fields::Field, One, Zero};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
+use ark_std::{rand::Rng, ops::Mul, test_rng, vec, string::ToString, UniformRand};
 use sp_ark_bls12_381::{
-	ArkScale,
-    Bls12_381, 
-	Fr,
-    G1Projective as G1, G2Affine, 
-    G2Projective as G2
+	fq::Fq, fq2::Fq2, fr::Fr, Bls12_381 as Bls12_381Host, G1Affine as G1AffineHost,
+	G1Projective as G1ProjectiveHost, G2Affine as G2AffineHost,
+	G2Projective as G2ProjectiveHost, HostFunctions,
 };
+
+use ark_bls12_381::G1Projective;
+
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"aura");
+
+pub mod crypto {
+	use super::KEY_TYPE;
+	use sp_core::sr25519::Signature as Sr25519Signature;
+	use sp_runtime::app_crypto::{app_crypto, sr25519};
+	use sp_runtime::{traits::Verify, MultiSignature, MultiSigner};
+	use sp_std::convert::TryFrom;
+
+	app_crypto!(sr25519, KEY_TYPE);
+
+	pub struct TestAuthId;
+	// implemented for runtime
+	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+
+	// implemented for mock runtime in test
+	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
+		for TestAuthId
+	{
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -63,13 +89,23 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*; 	
 	use primitive_types::H256;
+	use crate::{bls12_381, ArkScale, ArkScaleProjective};
+	use frame_system::{
+		pallet_prelude::*,
+		offchain::{
+			Signer,
+			AppCrypto,
+			CreateSignedTransaction,
+		}
+	};
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_session::Config {
+	pub trait Config: frame_system::Config + pallet_session::Config  + CreateSignedTransaction<Call<Self>> {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Type representing the weight of this pallet
@@ -78,6 +114,8 @@ pub mod pallet {
 		type MaxAuthorities: Get<u32>;
 		/// Something that provides randomness in the runtime.
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+		/// The identifier type for an authority.
+		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 	}
 
 	#[pallet::storage]
@@ -86,13 +124,33 @@ pub mod pallet {
 		_, BoundedVec<T::AccountId, T::MaxAuthorities>, ValueQuery,
 	>;
 
+	#[pallet::storage]
+	pub type SessionPublicKey<T: Config> = StorageMap<
+		_,
+		Blake2_128,
+		SessionIndex,
+		Vec<u8>,
+		ValueQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn session_secret_keys)]
+	pub type SessionSecretKeys<T: Config> = StorageMap<
+		_,
+		Blake2_128,
+		SessionIndex,
+		Vec<(u32, Vec<u8>)>,
+		ValueQuery,
+	>;
+
 	/// map block num to secret
 	#[pallet::storage]
+	#[pallet::getter(fn slot_secrets)]
 	pub type SlotSecrets<T: Config> = StorageMap<
 		_,
 		Blake2_128,
-		T::BlockNumber,
-		u32,
+		Slot,
+		Vec<u8>,
 		ValueQuery,
 	>;
 
@@ -139,7 +197,7 @@ pub mod pallet {
 		 const INHERENT_IDENTIFIER: InherentIdentifier = INHERENT_IDENTIFIER;
  
 		 fn create_inherent(data: &InherentData) -> Option<Self::Call> {
-			let secret: u32 =
+			let secret: Vec<u8> =
 				data.get_data(&Self::INHERENT_IDENTIFIER).ok().flatten()?;
 			
 			Some(Call::reveal_slot_secret { secret })
@@ -158,19 +216,20 @@ pub mod pallet {
 		}
 	 }
  
-
-	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	// These functions materialize as "extrinsics", which are often compared to transactions.
-	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// An example dispatchable that takes a singles value as a parameter, writes the value to
-		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
+		
+		/// called via an *inherent only*
+		/// reveals a validator's slot secret by publishing it in a block
+		///
+		/// * `origin`: should be none, but must provide valid claim of slot authorship
+		/// * `secret`: the secret to publish in the block
+		/// TODO: require valid slot claim + verify
 		#[pallet::call_index(0)]
 		#[pallet::weight(0)]
 		pub fn reveal_slot_secret(
 			origin: OriginFor<T>,
-			secret: u32,
+			slot: Slot,
 		) -> DispatchResult {
 			ensure_none(origin)?;
 			let current_block = frame_system::Pallet::<T>::block_number();
@@ -178,36 +237,41 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// called by root before each session
+		/// submits session secret shares for each authority and the session public key
+		///
 		#[pallet::call_index(1)]
 		#[pallet::weight(0)]
 		pub fn submit_session_artifacts(
 			origin: OriginFor<T>,
 			session_index: SessionIndex,
-			session_pubkey: Vec<u8>,
-			secrets: Vec<(u32, Vec<u8>)>,
+			// session_pubkey: Vec<u8>,
+			session_secrets: Vec<(u32, Vec<u8>)>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			// let current_block = frame_system::Pallet::<T>::block_number();
-			// SlotSecrets::<T>::insert(current_block, secret);
+			// SessionPublicKey::<T>::insert(session_index.clone(), session_pubkey);
+			SessionSecretKeys::<T>::insert(session_index.clone(), session_secrets);
 			Ok(())
 		}
 
-		#[pallet::call_index(2)]
-		#[pallet::weight(0)]
-		pub fn submit_session_pk(
-			origin: OriginFor<T>,
-			session_index: SessionIndex,
-			pk: [u8;32],
-		) -> DispatchResult {
-			ensure_root(origin)?;
-			// let current_block = frame_system::Pallet::<T>::block_number();
-			// SlotSecrets::<T>::insert(current_block, secret);
-			Ok(())
-		}
+		
+		// #[pallet::call_index(2)]
+		// #[pallet::weight(0)]
+		// pub fn submit_session_pk(
+		// 	origin: OriginFor<T>,
+		// 	session_index: SessionIndex,
+		// 	pk: [u8;32],
+		// ) -> DispatchResult {
+		// 	ensure_root(origin)?;
+		// 	// let current_block = frame_system::Pallet::<T>::block_number();
+		// 	// SlotSecrets::<T>::insert(current_block, secret);
+		// 	Ok(())
+		// }
 	}
 }
 
 impl<T: Config> Pallet<T> {
+
 	fn initialize_validators(validators: &[T::AccountId]) {
 		log::info!("Initializing validators defined in the chain spec.");
 		assert!(validators.len() > 0, "At least 1 validator should be initialized");
@@ -217,7 +281,7 @@ impl<T: Config> Pallet<T> {
 		<Validators<T>>::put(bounded);
 	}
 
-	/// generate a new random polynomial over the field Fr
+	/// generate a new random polynomial over the scalar field
 	pub fn keygen<R: Rng + Sized>(
 		t: usize,
 		mut rng: R
@@ -233,64 +297,68 @@ impl<T: Config> Pallet<T> {
 	) -> Vec<Fr> {
 		(1..n).map(|k| poly.clone().evaluate(&<Fr>::from(k))).collect::<Vec<_>>()
 	}
-
-	pub fn generate_msm_args<Group: ark_ec::VariableBaseMSM>(
-		size: u32,
-	) -> (ArkScale<Vec<Group>>, ArkScale<Vec<Group::ScalarField>>) {
-		let (seed, _) = T::Randomness::random(b"test");
-		// seed needs to be guaranteed to be 32 bytes.
-		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(seed.as_ref()))
-			.expect("input is padded with zeroes; qed");
-		let rng = &mut ChaCha20Rng::from_seed(seed);
-		let scalars = (0..size).map(|_| Group::ScalarField::rand(rng)).collect::<Vec<_>>();
-		let bases = (0..size).map(|_| Group::rand(rng)).collect::<Vec<_>>();
-		let bases: ArkScale<Vec<Group>> = bases.into();
-		let scalars: ArkScale<Vec<Group::ScalarField>> = scalars.into();
-		(bases, scalars)
-	}
 }
 
 impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 	// Plan a new session and provide new validator set.
+	// TODO: deal with randomness freshness
+	// https://github.com/paritytech/substrate/issues/8312
 	fn new_session(new_index: u32) -> Option<Vec<T::AccountId>> {
 		log::info!("Starting new session with index: {:?}", new_index);
 		let binding = Self::validators();
-		// calculate a secret polynomial f(x)
-		// for now, requires 100% participation for decryption
-		// make this a configurable parameter later on
-		let t = binding.len();
-				// we'll need a random seed here.
-		// TODO: deal with randomness freshness
-		// https://github.com/paritytech/substrate/issues/8312
+		let authorities = binding.as_slice();
+
 		let (seed, _) = T::Randomness::random(new_index.to_string().as_bytes());
 		// seed needs to be guaranteed to be 32 bytes.
 		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(seed.as_ref()))
 			.expect("input is padded with zeroes; qed");
 		let mut rng = ChaCha20Rng::from_seed(seed);
-		let f = Self::keygen(t, rng);
-		// calculate shares f(1), ..., f(n) and session pubkey P_pub
-		let msk = f.clone().evaluate(&<Fr>::from(0));
-		// let mpk: G2 = G2::generator().mul(msk);
+		// // add timestamp to seed?
+		
+		// this is not the correct number of secrets but w/e for now
+		let n = binding.len();
+		// super simple scheme: produce a secret for each authority and put onchain
+		let t = n;
 
-		// let scalars = <ArkScale<
-		// 	Vec<<ark_bls12_381::Bls12_381 as Pairing>::ScalarField>,
-		// > as Decode>::decode(&mut scalars.as_slice())
-		// .unwrap().0;
-		// let _ = crate::bls12_381::do_msm_g2_optimized(&bases[..], &scalars[..]);
+		let f = Self::keygen(t, &mut rng);
+		let master_secret = f.clone().evaluate(&<Fr>::from(0));
+		let session_secrets = Self::calculate_shares(t as u8, f);		
+		let encoded_secrets = session_secrets.iter().enumerate().map(|(i, s)| {
+			let mut bytes: Vec<u8> = Vec::new();
+			s.serialize_compressed(&mut bytes).unwrap();
+			(i as u32, bytes)
+		}).collect::<Vec<(u32, Vec<u8>)>>();
 
-		// let _base: ArkScale<sp_ark_models::short_weierstrass::Projective<sp_bls12_381::g2::Config>> = G2<T>::generator().into();
-		// let _base: ArkScale<G2<T>> = G2<T>::generator().into();
-		// let _scalar: ArkScale<Group::ScalarField> = msk.into();
+		// still having problems with group operations
+		let generator = G1Projective::rand(&mut rng).into_affine();
+		let p_pub = generator.mul(master_secret);
+		let mut mpk_bytes = Vec::new();
+		p_pub.serialize_compressed(&mut mpk_bytes.clone()).unwrap();
 
-		let session_secrets = Self::calculate_shares(t as u8, f);
-		let scalar_msk: ArkScale<Vec<
-		ark_ec::short_weierstrass::Projective<sp_ark_bls12_381::g2::Config>
-		>> = session_secrets.into();
-		// encode (mpk, {i -> secret_i}; i = 1,...,n)
+		SessionPublicKey::<T>::insert(new_index, mpk_bytes);
+		SessionSecretKeys::<T>::insert(new_index, encoded_secrets);
 
-		// call extrinsic with (spk, secret_shares)
+		// let signer = frame_system::offchain::Signer::<T, <T as pallet::Config>::AuthorityId>::all_accounts();
+		// if !signer.can_sign() {
+		// 	log::error!(
+		// 		"No local accounts available. Consider adding one via `author_insertKey` RPC.",
+		// 	);
+		// }
+		// let results = signer.send_signed_transaction(|_account| { 
+		// 	Call::submit_session_artifacts{
+		// 		session_index: new_index,
+		// 		// session_pubkey: mpk_bytes.clone(),
+		// 		session_secrets: encoded_secrets.clone(),
+		// 	}
+		// });
 
-		let authorities = binding.as_slice();
+		// for (_, res) in &results {
+		// 	match res {
+		// 		Ok(()) => log::info!("Submitted results successfully"),
+		// 		Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
+		// 	}
+		// }
+
 		Some(authorities.into())
 	}
 

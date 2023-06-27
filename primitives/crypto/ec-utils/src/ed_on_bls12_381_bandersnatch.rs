@@ -23,7 +23,7 @@ use crate::utils::{
 	msm_sw_generic, msm_te_generic, mul_projective_generic, mul_projective_te_generic,
 };
 use ark_ed_on_bls12_381_bandersnatch::BandersnatchConfig;
-use sp_std::vec::Vec;
+use ark_std::vec::Vec;
 
 /// Compute a multi scalar multiplication for short_weierstrass through
 /// arkworks.

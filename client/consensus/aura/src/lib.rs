@@ -410,12 +410,12 @@ where
 		// Option 1: I *should* be able to get the secret key by decoding the extrinsic
 		// loop over, parse out the one to reveal_slot_secret and get params
 		// https://substrate.stackexchange.com/questions/770/decode-extrinsic-on-substrate-side
-		let secret_ext = &body[1];
+		// let secret_ext = &body[1];
 		// should be: 0407000<secret bytes>
-		let secret_ext_string = format!("{:?}", secret_ext);
-		let s = secret_ext_string.as_bytes();
+		// let secret_ext_string = format!("{:?}", secret_ext);
+		// let s = secret_ext_string.as_bytes();
 		// this will be 32 bytes when we get the real secret injected
-		let secret = &s[7..s.len()-1];
+		// let secret = &s[7..s.len()-1];
 		// now with this secret, we can prepare our proof + signature
 
 		// panic!("{:?}", secret);
@@ -578,18 +578,39 @@ where
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 
-// /// get the slot secret from the runtime
-// fn slot_secret<A, B, C>(
-// 	client: &C,
-// 	parent_hash: B::Hash,
-// ) -> A 
-// A: Codec + Debug,
-// B: BlockT,
-// C: ProvideRuntimeApi<B>,
-// C::Api: AuraApi<B, A>,
-// {
-// 	client.runtime_api().secret(parent_hash).ok().ok_or(ConsensusError::InvalidSignature);
-// }
+/// get the slot secret from the runtime
+fn slot_secret<A, B, C>(
+	client: &C,
+	parent_hash: B::Hash,
+) -> A 
+A: Codec + Debug,
+B: BlockT,
+C: ProvideRuntimeApi<B>,
+C::Api: AuraApi<B, A>,
+{
+	CompatibilityMode::None => {},
+		// Use `initialize_block` until we hit the block that should disable the mode.
+		CompatibilityMode::UseInitializeBlock { until } =>
+			if *until > context_block_number {
+				runtime_api
+					.initialize_block(
+						parent_hash,
+						&B::Header::new(
+							context_block_number,
+							Default::default(),
+							Default::default(),
+							parent_hash,
+							Default::default(),
+						),
+					)
+					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
+			},
+	}
+	// DRIEMWORKS::TODO : Add new error 
+	client.runtime_api()
+		.secret(parent_hash).ok()
+		.ok_or(ConsensusError::InvalidSignature)
+}
 
 #[cfg(test)]
 mod tests {
