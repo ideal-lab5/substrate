@@ -22,7 +22,7 @@ pub mod weights;
 pub use weights::*;
 use sp_staking::SessionIndex;
 use codec::{Encode, Decode};
-use frame_system::offchain::{SendSignedTransaction, SubmitTransaction};
+use frame_system::offchain::{SendSignedTransaction, Signer, SubmitTransaction};
 use frame_support::{
 	dispatch::Vec, BoundedSlice,
 	traits::{
@@ -34,6 +34,7 @@ use sp_runtime::{
 	KeyTypeId,
 	traits::{Convert, TrailingZeroInput},
 	transaction_validity::{InvalidTransaction, TransactionValidity, ValidTransaction},
+	offchain::storage::StorageRetrievalError,
 };
 use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
@@ -161,6 +162,10 @@ pub mod pallet {
 	pub type ActiveSessionIndex<T: Config> = 
 		StorageValue<_, SessionIndex, ValueQuery>;
 
+	#[pallet::storage]
+	pub type NextSessionIndex<T: Config> = 
+		StorageValue<_, SessionIndex, ValueQuery>;
+
 	/// TODO map block num to secret
 	#[pallet::storage]
 	#[pallet::getter(fn slot_secrets)]
@@ -180,6 +185,7 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
+		InvalidSigner,
 	}
 
 	#[pallet::genesis_config]
@@ -200,44 +206,39 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn offchain_worker(block_number: T::BlockNumber) {
 			// if the CurrentSessionIndex changed... then it should be ahead of the active by one
+			let next = CurrentSessionIndex::<T>::get();
 			let current = CurrentSessionIndex::<T>::get();
 			let active = ActiveSessionIndex::<T>::get();
-			if current > active {
-				// we're planning a new session
-				Self::refresh_keys(current, Self::validators().into());
-			} else if current == active {
-				// we have started or are in a session
-				// reveal 'next block secret'
+			// stage0: keygen
+			let mut stage_0 = StorageValueRef::persistent(b"STAGE0");
+			// stage1: secret derivation and storage
+			let mut stage_1 = StorageValueRef::persistent(b"STAGE1");
+			// won't trigger the first session..
+			if let Some(s0) = stage_0.get::<u32>().unwrap_or(Some(0)) {
+				// genesis or between session end and planning
+				if s0 == (next as u32) - 1  && next > active {
+					log::info!("CALLING REFRESH KEYS");
+					// the session has ended, setup keys for enxt session
+					Self::refresh_keys(next, Self::validators().into());
+					stage_0.set(&next);
+				} else if let Some(s1) = stage_1.get::<u32>().unwrap_or(Some(0)) { 
+					// this should be triggered when start_session is called
+					// i.e. when the active session has incremented
+					if s1 == active - 1 {
+						log::info!("YOU SHOULD SEE ME ONCE");
+						// in session planning phase
+						// calculate your session secrets and store them locally
+						// let mut data = StorageValueRef::persistent(b"TEST");
+						// data.set(&current);
+						stage_1.set(&current);
+					}
+				} else {
+					stage_1.set(&0);
+				}
+			} else {
+				// do nothing for now?
+				stage_0.set(&0);
 			}
-		}
-	}
-	
-	#[pallet::validate_unsigned]
-	impl<T: Config> ValidateUnsigned for Pallet<T> {
-		type Call = Call<T>;
-
-		/// Validate unsigned call to this module.
-		///
-		/// By default unsigned transactions are disallowed, but implementing the validator
-		/// here we make sure that some particular calls (the ones produced by offchain worker)
-		/// are being whitelisted and marked as valid.
-		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			ValidTransaction::with_tag_prefix("etfnetwork")
-				.priority(2 << 20)
-				.longevity(5)
-				.propagate(true)
-				.build()
-			// // Firstly let's check that we call the right function.
-			// if let Call::submit_session_artifacts { .. } = call {
-			// 	// Self::validate_transaction_parameters(session_index, session_secrets)
-			// 	ValidTransaction::with_tag_prefix("etfnetwork")
-			// 		.priority(2 << 20)
-			// 		.longevity(5)
-			// 		.propagate(true)
-			// 		.build()
-			// } else {
-			// 	InvalidTransaction::Call.into()
-			// }
 		}
 	}
 
@@ -255,17 +256,6 @@ pub mod pallet {
  
 		 fn create_inherent(data: &InherentData) -> Option<Self::Call> {
 			let slot: Slot = data.get_data(b"auraslot").ok().flatten()?;
-			
-			// can we read from local storage? No
-			let storage = StorageValueRef::persistent(b"TEST");
-
-			if let Ok(Some(res)) = storage.get::<u64>() {
-				// log::info!("cached result: {:?}", res);
-				assert!(false);
-			} else {
-				assert!(true);
-				// log::info!("As expected.");
-			}
 			let secret: Vec<u8> =
 				data.get_data(&Self::INHERENT_IDENTIFIER).ok().flatten()?;
 			Some(Call::reveal_slot_secret { slot, secret })
@@ -315,7 +305,8 @@ pub mod pallet {
 			session_index: SessionIndex,
 			session_secrets: Vec<(u32, Vec<u8>)>,
 		) -> DispatchResult {
-			ensure_none(origin)?;
+			log::info!("submitting session artifacts");
+			let _who = ensure_signed(origin)?;
 			SessionSecretKeys::<T>::insert(
 				session_index.clone(), session_secrets
 			);
@@ -408,7 +399,10 @@ impl<T: Config> Pallet<T> {
 		(1..n).map(|k| poly.clone().evaluate(&<Fr>::from(k))).collect::<Vec<_>>()
 	}
 
-	pub fn refresh_keys(new_index: SessionIndex, authorities: Vec<T::AccountId>) {
+	pub fn refresh_keys(
+		new_index: SessionIndex, 
+		authorities: Vec<T::AccountId>
+	) -> Result<(), Error<T>> {
 		let (seed, _) = T::Randomness::random(new_index.to_string().as_bytes());
 		// seed needs to be guaranteed to be 32 bytes.
 		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(seed.as_ref()))
@@ -429,7 +423,7 @@ impl<T: Config> Pallet<T> {
 			s.serialize_compressed(&mut bytes).unwrap();
 			(i as u32, bytes)
 		}).collect::<Vec<(u32, Vec<u8>)>>();
-
+		log::info!("generated encoded secrets");
 		// still having problems with group operations
 		// let generator = G1Projective::rand(&mut rng).into_affine();
 		// let p_pub = generator.mul(master_secret);
@@ -437,13 +431,23 @@ impl<T: Config> Pallet<T> {
 		// p_pub.serialize_compressed(&mut mpk_bytes.clone()).unwrap();
 
 		// DRIEMWORKS::TODO: Require some type of proof that we verify when checking unsigned tx
-		let call = Call::submit_session_artifacts { 
-			session_index: new_index.clone(), 
-			session_secrets: encoded_secrets.clone(),
-		};
-		// TODO: use signed tx
-		SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-			.map_err(|()| "Unable to submit unsigned transaction.");
+		let signer = Signer::<T, T::AuthorityId>::all_accounts();
+		if !signer.can_sign() {
+			return Err(Error::<T>::InvalidSigner);
+		}
+		let results = signer.send_signed_transaction(|_account| 
+			Call::submit_session_artifacts { 
+				session_index: new_index.clone(), 
+				session_secrets: encoded_secrets.clone(),
+			});
+
+		for (acc, res) in &results {
+			match res {
+				Ok(()) => log::info!("Submitted session secrets"),
+				Err(e) => log::error!("Failed to submit session secrets"),
+			}
+		}
+		Ok(())
 	}
 }
 
@@ -458,6 +462,11 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 		Some(Self::validators().into())
 	}
 
+	fn new_session_genesis(new_index: SessionIndex)  -> Option<Vec<T::AccountId>> {
+		CurrentSessionIndex::<T>::put(new_index);
+		Some(Self::validators().into())
+	}
+
 	fn start_session(start_index: u32) {
 		log::info!("Starting session with index: {:?}", start_index);
 		ActiveSessionIndex::<T>::put(start_index);
@@ -465,7 +474,8 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 
 	fn end_session(end_index: u32) {
 		log::info!("Ending session with index: {:?}", end_index);
-		// trigger new keygen
+		let active = ActiveSessionIndex::<T>::get();
+		NextSessionIndex::<T>::put(active + 1);
 	}
 }
 
