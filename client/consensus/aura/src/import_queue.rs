@@ -54,6 +54,7 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 fn check_header<C, B: BlockT, P: Pair>(
 	client: &C,
 	slot_now: Slot,
+	secret: Option<[u8;32]>,
 	header: B::Header,
 	hash: B::Hash,
 	authorities: &[AuthorityId<P>],
@@ -65,7 +66,9 @@ where
 	P::Public: Encode + Decode + PartialEq + Clone,
 {
 	let check_result =
-		crate::standalone::check_header_slot_and_seal::<B, P>(slot_now, header, authorities);
+		crate::standalone::check_header_slot_and_seal::<B, P>(
+			slot_now, secret, header, authorities
+		);
 
 	match check_result {
 		Ok((header, slot, seal)) => {
@@ -193,6 +196,26 @@ where
 
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
+		// must have known size at compile time
+		// let mut secret: Option<[u8;32]> = None;
+		let secret: Option<[u8;32]> = if let Some(secret_slice) = &block.auxiliary[0].1 {
+			if secret_slice.len() == 32 {
+				let arr: [u8; 32] = secret_slice[0..32].try_into().unwrap();
+				Some(arr)
+			} else {
+				None
+			}
+		} else {
+			None
+		};
+		
+		// let secret = aux[0].1.unwrap_or(vec![]);
+
+		// if the secret is not availabe, we should default
+		// to not checking the DLEQ proof
+
+		// if it is available then we should check the proof
+
 		let authorities = authorities(
 			self.client.as_ref(),
 			parent_hash,
@@ -221,6 +244,7 @@ where
 		let checked_header = check_header::<C, B, P>(
 			&self.client,
 			slot_now + 1,
+			secret,
 			block.header,
 			hash,
 			&authorities[..],

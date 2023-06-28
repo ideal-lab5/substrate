@@ -20,6 +20,7 @@ use sp_runtime::{
 		AccountIdLookup, BlakeTwo256, Block as BlockT, ConvertInto, 
 		IdentifyAccount, NumberFor, OpaqueKeys, One, Verify, StaticLookup,
 	},
+	offchain::storage::StorageValueRef,
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
@@ -523,9 +524,10 @@ impl_runtime_apis! {
 			id.into()
 		}
 
-		// fn secret(slot: Slot) -> Vec<u8> {
-		// 	Etf::slot_secrets(slot)
-		// }
+		fn secret(slot: Slot) -> Vec<u8> {
+			let mut secret = StorageValueRef::persistent(slot.to_string().as_bytes());
+			vec![]
+		}
 	}
 
 	impl sp_session::SessionKeys<Block> for Runtime {

@@ -218,18 +218,23 @@ pub mod pallet {
 				// genesis or between session end and planning
 				if s0 == (next as u32) - 1  && next > active {
 					log::info!("CALLING REFRESH KEYS");
-					// the session has ended, setup keys for enxt session
+					// the session has ended, setup keys for next session
 					Self::refresh_keys(next, Self::validators().into());
 					stage_0.set(&next);
 				} else if let Some(s1) = stage_1.get::<u32>().unwrap_or(Some(0)) { 
 					// this should be triggered when start_session is called
 					// i.e. when the active session has incremented
 					if s1 == active - 1 {
-						log::info!("YOU SHOULD SEE ME ONCE");
-						// in session planning phase
-						// calculate your session secrets and store them locally
-						// let mut data = StorageValueRef::persistent(b"TEST");
-						// data.set(&current);
+						log::info!("PUTTING SECRETS (ENCRYPTED) IN OFFCHAIN STORAGE");
+						// this should represent the encrypted secret
+						let session_slots = (1..10);
+						session_slots.map(|i| {
+							let ssk = &SessionSecretKeys::<T>::get(s1)[i];
+							let key = i.to_string();
+							let mut secret = 
+								StorageValueRef::persistent(key.as_bytes());
+							secret.set(ssk);
+						});
 						stage_1.set(&current);
 					}
 				} else {
@@ -242,6 +247,7 @@ pub mod pallet {
 		}
 	}
 
+	// DRIEMWORKS::TODO: REMOVE THIS?
 	 /// The identifier for the parachain consensus update inherent.
 	 pub const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
 
@@ -277,6 +283,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		
+		// DRIEMWORKS::TODO REMOVE THIS?
 		/// called via an *inherent only*
 		/// reveals a validator's slot secret by publishing it in a block
 		///
@@ -326,62 +333,6 @@ impl<T: Config> Pallet<T> {
 		<Validators<T>>::put(bounded);
 	}
 
-	// fn validate_transaction_parameters(
-	// 	index: &SessionIndex,
-	// 	encoded_secrets: &Vec<(u32, Vec<u8>)>
-	// ) -> TransactionValidity {
-	// 	// DRIEMWORKS::TODO logic to validate unsigned
-	// 	// 1. make sure the index is the expected one
-	// 	// 2. make sure 
-
-	// 	// // Now let's check if the transaction has any chance to succeed.
-	// 	// let next_unsigned_at = <NextUnsignedAt<T>>::get();
-	// 	// if &next_unsigned_at > block_number {
-	// 	// 	return InvalidTransaction::Stale.into()
-	// 	// }
-	// 	// // Let's make sure to reject transactions from the future.
-	// 	// let current_block = <system::Pallet<T>>::block_number();
-	// 	// if &current_block < block_number {
-	// 	// 	return InvalidTransaction::Future.into()
-	// 	// }
-
-	// 	// We prioritize transactions that are more far away from current average.
-	// 	//
-	// 	// Note this doesn't make much sense when building an actual oracle, but this example
-	// 	// is here mostly to show off offchain workers capabilities, not about building an
-	// 	// oracle.
-	// 	// let avg_price = Self::average_price()
-	// 	// 	.map(|price| if &price > new_price { price - new_price } else { new_price - price })
-	// 	// 	.unwrap_or(0);
-
-	// 	ValidTransaction::with_tag_prefix("etfnetwork")
-	// 		// We set base priority to 2**20 and hope it's included before any other
-	// 		// transactions in the pool. Next we tweak the priority depending on how much
-	// 		// it differs from the current average. (the more it differs the more priority it
-	// 		// has).
-	// 		// .priority(T::UnsignedPriority::get().saturating_add(avg_price as _))
-	// 		// This transaction does not require anything else to go before into the pool.
-	// 		// In theory we could require `previous_unsigned_at` transaction to go first,
-	// 		// but it's not necessary in our case.
-	// 		//.and_requires()
-	// 		// We set the `provides` tag to be the same as `next_unsigned_at`. This makes
-	// 		// sure only one transaction produced after `next_unsigned_at` will ever
-	// 		// get to the transaction pool and will end up in the block.
-	// 		// We can still have multiple transactions compete for the same "spot",
-	// 		// and the one with higher priority will replace other one in the pool.
-	// 		.and_provides(index)
-	// 		// The transaction is only valid for next 5 blocks. After that it's
-	// 		// going to be revalidated by the pool.
-	// 		.longevity(5)
-	// 		// It's fine to propagate that transaction to other peers, which means it can be
-	// 		// created even by nodes that don't produce blocks.
-	// 		// Note that sometimes it's better to keep it for yourself (if you are the block
-	// 		// producer), since for instance in some schemes others may copy your solution and
-	// 		// claim a reward.
-	// 		.propagate(true)
-	// 		.build()
-	// }
-
 	/// generate a new random polynomial over the scalar field
 	pub fn keygen<R: Rng + Sized>(
 		t: usize,
@@ -411,7 +362,9 @@ impl<T: Config> Pallet<T> {
 		// add timestamp to seed?
 		// we actually need the number of slots/session, not number of authorities
 		// defined in aura config
-		let n = authorities.len();
+		// let n = authorities.len();
+		// DRIEMWORKS::TODO CALC SLOTS/SESSION (it's 10 right now)
+		let n = 10;
 		// (n,n) TSS
 		let t = n;
 		let f = Self::keygen(t, &mut rng);
@@ -423,7 +376,6 @@ impl<T: Config> Pallet<T> {
 			s.serialize_compressed(&mut bytes).unwrap();
 			(i as u32, bytes)
 		}).collect::<Vec<(u32, Vec<u8>)>>();
-		log::info!("generated encoded secrets");
 		// still having problems with group operations
 		// let generator = G1Projective::rand(&mut rng).into_affine();
 		// let p_pub = generator.mul(master_secret);

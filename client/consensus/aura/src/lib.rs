@@ -276,7 +276,7 @@ pub fn build_aura_worker<P, B, C, PF, I, SO, L, BS, Error>(
 	SyncOracle = SO,
 	JustificationSyncLink = L,
 	Claim = P::Public,
-	AuxData = (Vec<AuthorityId<P>>, u32),
+	AuxData = (Vec<AuthorityId<P>>, Vec<u8>),
 >
 where
 	B: BlockT,
@@ -353,7 +353,7 @@ where
 	type Claim = P::Public;
 	// type AuxData = Vec<AuthorityId<P>>;
 	// For now I'll just use a u32... later on Vec<u8>
-	type AuxData = (Vec<AuthorityId<P>>, u32);
+	type AuxData = (Vec<AuthorityId<P>>, Vec<u8>);
 
 	fn logging_target(&self) -> &'static str {
 		"aura"
@@ -363,18 +363,22 @@ where
 		&mut self.block_import
 	}
 
-	fn aux_data(&self, header: &B::Header, _slot: Slot) -> Result<Self::AuxData, ConsensusError> {
-		let public_key = 1u32;
-		// let secret = secret(
-		// 	self.client.as_ref(),
-		// );
+	fn aux_data(&self, header: &B::Header, slot: Slot) -> Result<Self::AuxData, ConsensusError> {
+		// let public_key = 1u32;
+		let secret = secret(
+			self.client.as_ref(),
+			header.hash(),
+			*header.number() + 1u32.into(),
+			slot,
+			&self.compatibility_mode,
+		)?;
 		let authorities = authorities(
 			self.client.as_ref(),
 			header.hash(),
 			*header.number() + 1u32.into(),
 			&self.compatibility_mode,
 		)?;
-		Ok((authorities, public_key))
+		Ok((authorities, secret))
 	}
 
 	fn authorities_len(&self, authorities: &Self::AuxData) -> Option<usize> {
@@ -419,11 +423,14 @@ where
 		// now with this secret, we can prepare our proof + signature
 
 		// panic!("{:?}", secret);
+
+		let secret = aux.1;
+
 		let signature_digest_item =
 			crate::standalone::dleq_seal::<_, P, B>(
 				header_hash, 
 				&public, 
-				&aux.1, // not really 
+				&secret,
 				&self.keystore
 			)?;
 		// let signature_digest_item =
@@ -435,6 +442,7 @@ where
 		import_block.state_action =
 			StateAction::ApplyChanges(sc_consensus::StorageChanges::Changes(storage_changes));
 		import_block.fork_choice = Some(ForkChoiceStrategy::LongestChain);
+		import_block.auxiliary = vec![(b"secret".to_vec(), Some(secret))];
 
 		Ok(import_block)
 	}
@@ -578,39 +586,46 @@ where
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 
-// /// get the slot secret from the runtime
-// fn slot_secret<A, B, C>(
-// 	client: &C,
-// 	parent_hash: B::Hash,
-// ) -> A 
-// A: Codec + Debug,
-// B: BlockT,
-// C: ProvideRuntimeApi<B>,
-// C::Api: AuraApi<B, A>,
-// {
-// 	CompatibilityMode::None => {},
-// 		// Use `initialize_block` until we hit the block that should disable the mode.
-// 		CompatibilityMode::UseInitializeBlock { until } =>
-// 			if *until > context_block_number {
-// 				runtime_api
-// 					.initialize_block(
-// 						parent_hash,
-// 						&B::Header::new(
-// 							context_block_number,
-// 							Default::default(),
-// 							Default::default(),
-// 							parent_hash,
-// 							Default::default(),
-// 						),
-// 					)
-// 					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
-// 			},
-// 	}
-// 	// DRIEMWORKS::TODO : Add new error 
-// 	client.runtime_api()
-// 		.secret(parent_hash).ok()
-// 		.ok_or(ConsensusError::InvalidSignature)
-// }
+/// get the slot secret from the runtime
+fn secret<A, B, C>(
+	client: &C,
+	parent_hash: B::Hash,
+	context_block_number: NumberFor<B>,
+	context_slot_number: Slot,
+	compatibility_mode: &CompatibilityMode<NumberFor<B>>,
+) -> Result<Vec<u8>, ConsensusError>
+where 
+	A: Codec + Debug,
+	B: BlockT,
+	C: ProvideRuntimeApi<B>,
+	C::Api: AuraApi<B, A>,
+{
+	let runtime_api = client.runtime_api();
+
+	match compatibility_mode {
+		CompatibilityMode::None => {},
+		// Use `initialize_block` until we hit the block that should disable the mode.
+		CompatibilityMode::UseInitializeBlock { until } =>
+			if *until > context_block_number {
+				runtime_api
+					.initialize_block(
+						parent_hash,
+						&B::Header::new(
+							context_block_number,
+							Default::default(),
+							Default::default(),
+							parent_hash,
+							Default::default(),
+						),
+					)
+					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
+			},
+	}
+	// DRIEMWORKS::TODO : Add new error 
+	runtime_api
+		.secret(parent_hash, context_slot_number).ok()
+		.ok_or(ConsensusError::InvalidAuthoritiesSet)
+}
 
 #[cfg(test)]
 mod tests {
