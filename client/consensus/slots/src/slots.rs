@@ -50,6 +50,8 @@ pub fn time_until_next_slot(slot_duration: Duration) -> Duration {
 pub struct SlotInfo<B: BlockT> {
 	/// The slot number as found in the inherent data.
 	pub slot: Slot,
+	// /// The secret as found in the inherent data
+	// pub secret: [u8;32],
 	/// The instant at which the slot ends.
 	pub ends_at: Instant,
 	/// The inherent data provider.
@@ -118,7 +120,7 @@ impl<Block, SC, IDP> Slots<Block, SC, IDP>
 where
 	Block: BlockT,
 	SC: SelectChain<Block>,
-	IDP: CreateInherentDataProviders<Block, ()> + 'static,
+	IDP: CreateInherentDataProviders<Block, [u8;32]> + 'static,
 	IDP::InherentDataProviders: crate::InherentDataProviderExt,
 {
 	/// Returns a future that fires when the next slot starts.
@@ -153,7 +155,7 @@ where
 
 			let inherent_data_providers = match self
 				.create_inherent_data_providers
-				.create_inherent_data_providers(chain_head.hash(), ())
+				.create_inherent_data_providers(chain_head.hash(), [0;32])
 				.await
 			{
 				Ok(x) => x,

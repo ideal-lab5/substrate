@@ -54,7 +54,7 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 fn check_header<C, B: BlockT, P: Pair>(
 	client: &C,
 	slot_now: Slot,
-	secret: Option<[u8;32]>,
+	secret: [u8;32],
 	header: B::Header,
 	hash: B::Hash,
 	authorities: &[AuthorityId<P>],
@@ -146,7 +146,7 @@ where
 	where
 		C: ProvideRuntimeApi<B>,
 		C::Api: BlockBuilderApi<B>,
-		CIDP: CreateInherentDataProviders<B, ()>,
+		CIDP: CreateInherentDataProviders<B, [u8;32]>,
 	{
 		let inherent_res = self
 			.client
@@ -175,7 +175,7 @@ where
 	P: Pair + Send + Sync + 'static,
 	P::Public: Send + Sync + Hash + Eq + Clone + Decode + Encode + Debug + 'static,
 	P::Signature: Encode + Decode,
-	CIDP: CreateInherentDataProviders<B, ()> + Send + Sync,
+	CIDP: CreateInherentDataProviders<B, [u8;32]> + Send + Sync,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	async fn verify(
@@ -196,18 +196,14 @@ where
 
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
-		// must have known size at compile time
-		// let mut secret: Option<[u8;32]> = None;
-		let secret: Option<[u8;32]> = if let Some(secret_slice) = &block.auxiliary[0].1 {
-			if secret_slice.len() == 32 {
-				let arr: [u8; 32] = secret_slice[0..32].try_into().unwrap();
-				Some(arr)
-			} else {
-				None
-			}
-		} else {
-			None
-		};
+		let mut secret: [u8; 32] = [0;32];
+		if block.auxiliary.len() > 0 {
+			if let Some(secret_slice) = &block.auxiliary[0].1 {
+				if secret_slice.len() == 32 {
+					secret = secret_slice[0..32].try_into().unwrap();
+				}
+			};
+		}
 		
 		// let secret = aux[0].1.unwrap_or(vec![]);
 
@@ -224,9 +220,11 @@ where
 		)
 		.map_err(|e| format!("Could not fetch authorities at {:?}: {}", parent_hash, e))?;
 
+		// DRIEMWORKS::TODO What if I pass the secret as extra args here?
+		// then we use the extra args when we create the inherent
 		let create_inherent_data_providers = self
 			.create_inherent_data_providers
-			.create_inherent_data_providers(parent_hash, ())
+			.create_inherent_data_providers(parent_hash, secret)
 			.await
 			.map_err(|e| Error::<B>::Client(sp_blockchain::Error::Application(e)))?;
 
@@ -296,6 +294,8 @@ where
 				block.post_digests.push(seal);
 				block.fork_choice = Some(ForkChoiceStrategy::LongestChain);
 				block.post_hash = Some(hash);
+				block.auxiliary = vec![(b"secret".to_vec(), Some(secret.into()))];
+				
 
 				Ok(block)
 			},
@@ -396,7 +396,7 @@ where
 	P::Public: Clone + Eq + Send + Sync + Hash + Debug + Encode + Decode,
 	P::Signature: Encode + Decode,
 	S: sp_core::traits::SpawnEssentialNamed,
-	CIDP: CreateInherentDataProviders<Block, ()> + Sync + Send + 'static,
+	CIDP: CreateInherentDataProviders<Block, [u8;32]> + Sync + Send + 'static,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	let verifier = build_verifier::<P, _, _, _>(BuildVerifierParams {

@@ -367,7 +367,7 @@ pub enum SealVerificationError<Header> {
 /// This digest item will always return `Some` when used with `as_aura_seal`.
 pub fn check_header_slot_and_seal<B: BlockT, P: Pair>(
 	slot_now: Slot,
-	secret: Option<[u8;32]>,
+	secret: [u8;32],
 	mut header: B::Header,
 	authorities: &[AuthorityId<P>],
 ) -> Result<(B::Header, Slot, DigestItem), SealVerificationError<B::Header>>

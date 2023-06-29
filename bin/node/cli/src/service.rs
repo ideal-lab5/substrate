@@ -211,7 +211,7 @@ pub fn new_partial(
 		Some(Box::new(justification_import)),
 		client.clone(),
 		select_chain.clone(),
-		move |_, ()| async move {
+		move |a, b| async move {
 			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 			let slot =
@@ -454,7 +454,7 @@ pub fn new_full_base(
 			block_import,
 			sync_oracle: sync_service.clone(),
 			justification_sync_link: sync_service.clone(),
-			create_inherent_data_providers: move |parent, ()| {
+			create_inherent_data_providers: move |parent, b| {
 				let client_clone = client_clone.clone();
 				async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();

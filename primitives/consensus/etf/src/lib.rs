@@ -22,7 +22,7 @@ use codec::Encode;
 pub const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
 
 /// the type of the inherent
-pub type InherentType = Vec<u8>;
+pub type InherentType = [u8;32];
 
 /// Provides the slot secret inherent data for `EtF`.
 /// implements [`InherentDataProvider`]

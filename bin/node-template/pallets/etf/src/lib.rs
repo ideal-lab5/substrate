@@ -150,11 +150,6 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	pub type Test<T: Config> = 
-		StorageValue<_, u32, ValueQuery>;
-
-
-	#[pallet::storage]
 	pub type CurrentSessionIndex<T: Config> = 
 		StorageValue<_, SessionIndex, ValueQuery>;
 
@@ -227,14 +222,19 @@ pub mod pallet {
 					if s1 == active - 1 {
 						log::info!("PUTTING SECRETS (ENCRYPTED) IN OFFCHAIN STORAGE");
 						// this should represent the encrypted secret
-						let session_slots = (1..10);
-						session_slots.map(|i| {
-							let ssk = &SessionSecretKeys::<T>::get(s1)[i];
+						// get collection of upcoming slots
+						// 0, 10, 20, 30, ...
+						let next_session_start_block_height = active * 10; 
+						// 9, 19, 29, 39, ...
+						let next_session_end_block = next_session_start_block_height + 10;
+						for i in next_session_start_block_height..next_session_start_block_height {
+							let ssk = &SessionSecretKeys::<T>::get(s1)[i as usize];
 							let key = i.to_string();
+							log::info!("key = {:?}", key);
 							let mut secret = 
 								StorageValueRef::persistent(key.as_bytes());
 							secret.set(ssk);
-						});
+						}
 						stage_1.set(&current);
 					}
 				} else {
@@ -331,6 +331,19 @@ impl<T: Config> Pallet<T> {
 		let bounded = <BoundedSlice<'_, _, T::MaxAuthorities>>::try_from(validators)
 				.expect("Initial authority set must be less than T::MaxAuthorities");
 		<Validators<T>>::put(bounded);
+	}
+
+	/// Get the current slot from the pre-runtime digests.
+	fn current_slot_from_digests() -> Option<Slot> {
+		let digest = frame_system::Pallet::<T>::digest();
+		let pre_runtime_digests = digest.logs.iter().filter_map(|d| d.as_pre_runtime());
+		for (id, mut data) in pre_runtime_digests {
+			if id == [b'a', b'u', b'r', b'a'] {
+				return Slot::decode(&mut data).ok()
+			}
+		}
+
+		None
 	}
 
 	/// generate a new random polynomial over the scalar field

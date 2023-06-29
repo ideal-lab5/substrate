@@ -96,6 +96,6 @@ sp_api::decl_runtime_apis! {
 		fn identity(slot: Slot) -> Vec<u8>;
 
 		/// return the secret for the current slot
-		fn secret(slot: Slot) -> Vec<u8>;
+		fn secret(block_number: u32) -> Vec<u8>;
 	}
 }

@@ -187,7 +187,7 @@ where
 	PF::Proposer: Proposer<B, Error = Error, Transaction = sp_api::TransactionFor<C, B>>,
 	SO: SyncOracle + Send + Sync + Clone,
 	L: sc_consensus::JustificationSyncLink<B>,
-	CIDP: CreateInherentDataProviders<B, ()> + Send + 'static,
+	CIDP: CreateInherentDataProviders<B, [u8;32]> + Send + 'static,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
 	BS: BackoffAuthoringBlocksStrategy<NumberFor<B>> + Send + Sync + 'static,
 	Error: std::error::Error + Send + From<ConsensusError> + 'static,
@@ -411,21 +411,7 @@ where
 		sc_consensus::BlockImportParams<B, <Self::BlockImport as BlockImport<B>>::Transaction>,
 		ConsensusError,
 	> {
-		// Option 1: I *should* be able to get the secret key by decoding the extrinsic
-		// loop over, parse out the one to reveal_slot_secret and get params
-		// https://substrate.stackexchange.com/questions/770/decode-extrinsic-on-substrate-side
-		// let secret_ext = &body[1];
-		// should be: 0407000<secret bytes>
-		// let secret_ext_string = format!("{:?}", secret_ext);
-		// let s = secret_ext_string.as_bytes();
-		// this will be 32 bytes when we get the real secret injected
-		// let secret = &s[7..s.len()-1];
-		// now with this secret, we can prepare our proof + signature
-
-		// panic!("{:?}", secret);
-
 		let secret = aux.1;
-
 		let signature_digest_item =
 			crate::standalone::dleq_seal::<_, P, B>(
 				header_hash, 
@@ -623,7 +609,7 @@ where
 	}
 	// DRIEMWORKS::TODO : Add new error 
 	runtime_api
-		.secret(parent_hash, context_slot_number).ok()
+		.secret(parent_hash, context_block_number).ok()
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 

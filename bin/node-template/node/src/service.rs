@@ -107,7 +107,7 @@ pub fn new_partial(
 			block_import: grandpa_block_import.clone(),
 			justification_import: Some(Box::new(grandpa_block_import.clone())),
 			client: client.clone(),
-			create_inherent_data_providers: move |_, ()| async move {
+			create_inherent_data_providers: move |_, secret| async move {
 				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 				let slot =
@@ -116,7 +116,10 @@ pub fn new_partial(
 						slot_duration,
 					);
 
-				Ok((slot, timestamp))
+
+				let s = sp_consensus_etf::InherentDataProvider::create(secret);
+
+				Ok((slot, s, timestamp))
 			},
 			spawner: &task_manager.spawn_essential_handle(),
 			registry: config.prometheus_registry(),
@@ -238,7 +241,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 				select_chain,
 				block_import,
 				proposer_factory,
-				create_inherent_data_providers: move |_, ()| async move {
+				create_inherent_data_providers: move |_, a| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 					let slot =
@@ -246,7 +249,7 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 							*timestamp,
 							slot_duration,
 						);
-					
+					let s = sp_consensus_etf::InherentDataProvider::create(a);
 					// DRIEMWORKS::TODO: can we do:
 					// I can probably do the decryption here
 					// 1. get encrypted secret using runtime_api
@@ -258,10 +261,16 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 					//  client.runtime_api().secret(slot)
 				    // );
 					// let _s = client.runtime_api().identity();
+					// let s = sp_consensus_etf::InherentDataProvider::create(secret.unwrap());
+					// let s = sp_consensus_etf::InherentDataProvider::create(secret);
+					// match extra_args {
+					// 	Some(secret) => {
+					// 		let s = sp_consensus_etf::InherentDataProvider::create(vec![1u8]);
+					// 	}
+					// }
+					
 
-					let secret = sp_consensus_etf::InherentDataProvider::create(vec![1u8]);
-
-					Ok((slot, secret, timestamp))
+					Ok((slot, s, timestamp))
 				},
 				force_authoring,
 				backoff_authoring_blocks,

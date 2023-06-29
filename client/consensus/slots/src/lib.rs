@@ -526,7 +526,7 @@ pub async fn start_slot_worker<B, C, W, SO, CIDP, Proof>(
 	C: SelectChain<B>,
 	W: SlotWorker<B, Proof>,
 	SO: SyncOracle + Send,
-	CIDP: CreateInherentDataProviders<B, ()> + Send + 'static,
+	CIDP: CreateInherentDataProviders<B, [u8;32]> + Send + 'static,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
 {
 	let mut slots = Slots::new(slot_duration.as_duration(), create_inherent_data_providers, client);

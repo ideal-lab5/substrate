@@ -498,7 +498,7 @@ where
 		+ 'static,
 	SO: SyncOracle + Send + Sync + Clone + 'static,
 	L: sc_consensus::JustificationSyncLink<B> + 'static,
-	CIDP: CreateInherentDataProviders<B, ()> + Send + Sync + 'static,
+	CIDP: CreateInherentDataProviders<B, [u8;32]> + Send + Sync + 'static,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
 	BS: BackoffAuthoringBlocksStrategy<NumberFor<B>> + Send + Sync + 'static,
 	Error: std::error::Error + Send + From<ConsensusError> + From<I::Error> + 'static,
@@ -1000,7 +1000,7 @@ where
 	Client: AuxStore + HeaderBackend<Block> + HeaderMetadata<Block> + ProvideRuntimeApi<Block>,
 	Client::Api: BlockBuilderApi<Block> + BabeApi<Block>,
 	SelectChain: sp_consensus::SelectChain<Block>,
-	CIDP: CreateInherentDataProviders<Block, ()>,
+	CIDP: CreateInherentDataProviders<Block, [u8;32]>,
 {
 	async fn check_inherents(
 		&self,
@@ -1126,7 +1126,7 @@ where
 		+ AuxStore,
 	Client::Api: BlockBuilderApi<Block> + BabeApi<Block>,
 	SelectChain: sp_consensus::SelectChain<Block>,
-	CIDP: CreateInherentDataProviders<Block, ()> + Send + Sync,
+	CIDP: CreateInherentDataProviders<Block, [u8;32]> + Send + Sync,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	async fn verify(
@@ -1167,7 +1167,7 @@ where
 
 		let create_inherent_data_providers = self
 			.create_inherent_data_providers
-			.create_inherent_data_providers(parent_hash, ())
+			.create_inherent_data_providers(parent_hash, [0;32])
 			.await
 			.map_err(|e| Error::<Block>::Client(ConsensusError::from(e).into()))?;
 
@@ -1805,7 +1805,7 @@ where
 		+ 'static,
 	Client::Api: BlockBuilderApi<Block> + BabeApi<Block> + ApiExt<Block>,
 	SelectChain: sp_consensus::SelectChain<Block> + 'static,
-	CIDP: CreateInherentDataProviders<Block, ()> + Send + Sync + 'static,
+	CIDP: CreateInherentDataProviders<Block, [u8;32]> + Send + Sync + 'static,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	const HANDLE_BUFFER_SIZE: usize = 1024;
