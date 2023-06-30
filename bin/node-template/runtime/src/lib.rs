@@ -239,7 +239,7 @@ impl_opaque_keys! {
 
 parameter_types! {
 	pub const Period: u32 = MINUTES;
-	pub const Offset: u32 = 0;
+	pub const Offset: u32 = 2;
 }
 
 impl pallet_session::Config for Runtime {
@@ -252,7 +252,6 @@ impl pallet_session::Config for Runtime {
 	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = opaque::SessionKeys;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
-	// type RuntimeEvent = RuntimeEvent;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -524,9 +523,12 @@ impl_runtime_apis! {
 			id.into()
 		}
 
-		fn secret(slot: Slot) -> [u8;32] {
-			// let mut secret = StorageValueRef::persistent(slot.to_string().as_bytes());
-			[2;32]
+		fn secret(context_block_number: u64) -> [u8;32] {
+			let key = context_block_number.to_string();
+			match StorageValueRef::persistent(key.as_bytes()).get::<[u8;32]>() {
+				Ok(Some(secret)) => secret,
+				_ => [0;32]
+			}
 		}
 	}
 

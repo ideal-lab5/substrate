@@ -368,7 +368,7 @@ where
 		let secret = secret(
 			self.client.as_ref(),
 			header.hash(),
-			*header.number() + 1u32.into(),
+			*header.number(),
 			slot,
 			&self.compatibility_mode,
 		)?;
@@ -610,9 +610,11 @@ where
 					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
 			},
 	}
-	// DRIEMWORKS::TODO : Add new error 
+	// DRIEMWORKS::TODO : Add new error
+	// let n: u64 = u64::try_from(context_block_number.into()).unwrap();
+	let n = TryInto::<u64>::try_into(context_block_number).ok().unwrap();
 	runtime_api
-		.secret(parent_hash, context_slot_number).ok()
+		.secret(parent_hash, n).ok()
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 

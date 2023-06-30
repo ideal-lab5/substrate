@@ -225,14 +225,20 @@ pub mod pallet {
 					// this should be triggered when start_session is called
 					// i.e. when the active session has incremented
 					if s1 == active - 1 {
-						log::info!("PUTTING SECRETS (ENCRYPTED) IN OFFCHAIN STORAGE");
 						// this should represent the encrypted secret
 						let mut test = 
 								StorageValueRef::persistent(b"test");
-							test.set(&[1;32]);
-						let session_slots = (1..10);
-						session_slots.map(|i| {
-							let ssk = &SessionSecretKeys::<T>::get(s1)[i];
+							test.set(&[3;32]);
+						// we know there are 10 slots in the session obviously we need
+						// to actually caluclate this, not just hard code ;)
+						
+						let start = TryInto::<u32>::try_into(block_number).ok().unwrap();
+						let end_block_number: u32 = start + 10u32;
+						log::info!("Writing secret for slots from block {:?} to {:?}",
+							block_number, end_block_number);
+						let session_slots = (start..end_block_number);
+						session_slots.map(|i: u32| {
+							let ssk = &SessionSecretKeys::<T>::get(s1)[i as usize];
 							let key = i.to_string();
 							let mut secret = 
 								StorageValueRef::persistent(key.as_bytes());
@@ -247,6 +253,9 @@ pub mod pallet {
 				// do nothing for now?
 				stage_0.set(&0);
 			}
+
+			// TODO [#3398] Generate offence report for all authorities that skipped their
+			// slots.
 		}
 	}
 

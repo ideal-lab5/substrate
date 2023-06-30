@@ -619,7 +619,7 @@ impl_runtime_apis! {
 
 		// DRIEMWORKS::TODO
 		fn identity(_: Slot) -> sp_application_crypto::Vec<u8> { todo!() }
-		fn secret(_: Slot) -> [u8;32] { todo!() }
+		fn secret(_: u64) -> [u8;32] { todo!() }
 	}
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
