@@ -22,9 +22,26 @@
 //! `CompatibleDigestItem` trait to appear in public interfaces.
 
 use crate::AURA_ENGINE_ID;
-use codec::{Codec, Encode};
+use codec::{Codec, Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
+
 use sp_consensus_slots::Slot;
-use sp_runtime::generic::DigestItem;
+use sp_runtime::{
+	RuntimeDebug, 
+	generic::DigestItem,
+};
+// use sp_core::sr25519::vrf::VrfSignature;
+
+/// Raw BABE primary slot assignment pre-digest.
+#[derive(Clone, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
+pub struct PreDigest {
+	// /// Authority index
+	// pub authority_index: super::AuthorityIndex,
+	/// Slot
+	pub slot: Slot,
+	/// VRF signature
+	pub secret: [u8;32],
+}
 
 /// A digest item which is usable with aura consensus.
 pub trait CompatibleDigestItem<Signature>: Sized {
@@ -35,10 +52,10 @@ pub trait CompatibleDigestItem<Signature>: Sized {
 	fn as_aura_seal(&self) -> Option<Signature>;
 
 	/// Construct a digest item which contains the slot number
-	fn aura_pre_digest(slot: Slot) -> Self;
+	fn aura_pre_digest(digest: PreDigest) -> Self;
 
 	/// If this item is an AuRa pre-digest, return the slot number
-	fn as_aura_pre_digest(&self) -> Option<Slot>;
+	fn as_aura_pre_digest(&self) -> Option<PreDigest>;
 }
 
 impl<Signature> CompatibleDigestItem<Signature> for DigestItem
@@ -53,11 +70,11 @@ where
 		self.seal_try_to(&AURA_ENGINE_ID)
 	}
 
-	fn aura_pre_digest(slot: Slot) -> Self {
-		DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode())
+	fn aura_pre_digest(digest: PreDigest) -> Self {
+		DigestItem::PreRuntime(AURA_ENGINE_ID, digest.encode())
 	}
 
-	fn as_aura_pre_digest(&self) -> Option<Slot> {
+	fn as_aura_pre_digest(&self) -> Option<PreDigest> {
 		self.pre_runtime_try_to(&AURA_ENGINE_ID)
 	}
 }

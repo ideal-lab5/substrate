@@ -36,6 +36,7 @@ use sp_runtime::{
 	traits::{Block as BlockT, Header, NumberFor, Zero},
 	DigestItem,
 };
+use sp_consensus_aura::digests::PreDigest;
 
 pub use sc_consensus_slots::check_equivocation;
 
@@ -90,31 +91,35 @@ pub fn slot_author<P: Pair>(slot: Slot, authorities: &[AuthorityId<P>]) -> Optio
 /// with the public key of the slot author.
 pub async fn claim_slot<P: Pair>(
 	slot: Slot,
+	secret: &[u8;32],
 	authorities: &[AuthorityId<P>],
 	keystore: &KeystorePtr,
-) -> Option<P::Public> {
+) -> Option<(PreDigest, P::Public)> {
 	// DRIEMWORKS::TODO should I replace this with expected_identity?
 	// let expected_author = Hash-to-G1(identity::<P>(slot, authorities));
 	// what if, when claiming the slot they decrypt
 	let expected_author = slot_author::<P>(slot, authorities);
-	expected_author.and_then(|p| {
+	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
-			Some(p.clone())
+			let pre_digest = PreDigest { slot: slot, secret: *secret };
+			Some((pre_digest.clone(), p.clone()))
 		} else {
 			None
 		}
-	})
+	});
+	
+	public
 }
 
-/// Produce the pre-runtime digest containing the slot info.
+/// Produce the pre-runtime digest containing the slot info and slot secret.
 ///
 /// This is intended to be put into the block header prior to runtime execution,
 /// so the runtime can read the slot in this way.
-pub fn pre_digest<P: Pair>(slot: Slot) -> sp_runtime::DigestItem
+pub fn pre_digest<P: Pair>(digest: PreDigest) -> sp_runtime::DigestItem
 where
 	P::Signature: Codec,
 {
-	<DigestItem as CompatibleDigestItem<P::Signature>>::aura_pre_digest(slot)
+	<DigestItem as CompatibleDigestItem<P::Signature>>::aura_pre_digest(digest)
 }
 
 /// Produce the seal digest item by signing the hash of a block.
@@ -159,8 +164,8 @@ where
 /// Note that after this is added to a block header, the hash of the block will change.
 pub fn dleq_seal<Hash, P, B>(
 	header_hash: &Hash,
-	public: &P::Public,
-	secret: &Vec<u8>,
+	public: &(PreDigest, P::Public),
+	// secret: &Vec<u8>,
 	keystore: &KeystorePtr,
 ) -> Result<sp_runtime::DigestItem, ConsensusError>
 where
@@ -176,7 +181,7 @@ where
 		.sign_with(
 			<AuthorityId<P> as AppCrypto>::ID,
 			<AuthorityId<P> as AppCrypto>::CRYPTO_ID,
-			public.as_slice(),
+			public.1.as_slice(),
 			header_hash.as_ref(),
 		)
 		.map_err(|e| ConsensusError::CannotSign(format!("{}. Key: {:?}", e, public)))?
@@ -221,7 +226,7 @@ where
 	let signature = signature
 		.clone()
 		.try_into()
-		.map_err(|_| ConsensusError::InvalidSignature(signature, public.to_raw_vec()))?;
+		.map_err(|_| ConsensusError::InvalidSignature(signature, public.1.to_raw_vec()))?;
 
 	let signature_digest_item =
 		<DigestItem as CompatibleDigestItem<P::Signature>>::aura_seal(signature);
@@ -248,12 +253,12 @@ pub enum PreDigestLookupError {
 /// Returns the `slot` stored in the pre-digest or an error if no pre-digest was found.
 pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	header: &B::Header,
-) -> Result<Slot, PreDigestLookupError> {
+) -> Result<PreDigest, PreDigestLookupError> {
 	if header.number().is_zero() {
-		return Ok(0.into())
+		return Ok(PreDigest{ slot: 0.into(), secret: [0;32] });
 	}
 
-	let mut pre_digest: Option<Slot> = None;
+	let mut pre_digest: Option<PreDigest> = None;
 	for log in header.digest().logs() {
 		trace!(target: LOG_TARGET, "Checking log {:?}", log);
 		match (CompatibleDigestItem::<Signature>::as_aura_pre_digest(log), pre_digest.is_some()) {
@@ -367,10 +372,10 @@ pub enum SealVerificationError<Header> {
 /// This digest item will always return `Some` when used with `as_aura_seal`.
 pub fn check_header_slot_and_seal<B: BlockT, P: Pair>(
 	slot_now: Slot,
-	secret: Option<[u8;32]>,
+	secret: [u8;32],
 	mut header: B::Header,
 	authorities: &[AuthorityId<P>],
-) -> Result<(B::Header, Slot, DigestItem), SealVerificationError<B::Header>>
+) -> Result<(B::Header, PreDigest, DigestItem), SealVerificationError<B::Header>>
 where
 	P::Signature: Codec,
 	P::Public: Codec + PartialEq + Clone,
@@ -382,9 +387,9 @@ where
 	let slot = find_pre_digest::<B, P::Signature>(&header)
 		.map_err(SealVerificationError::InvalidPreDigest)?;
 
-	if slot > slot_now {
+	if slot.slot > slot_now {
 		header.digest_mut().push(seal);
-		return Err(SealVerificationError::Deferred(header, slot))
+		return Err(SealVerificationError::Deferred(header, slot.slot))
 	} else {
 		// DRIEMWORKS::TODO 
 		// this is where we would verify the DLEQ proof
@@ -392,7 +397,7 @@ where
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let expected_author =
-			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
+			slot_author::<P>(slot.slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
 
 		let pre_hash = header.hash();
 

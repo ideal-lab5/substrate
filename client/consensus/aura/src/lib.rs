@@ -48,6 +48,7 @@ use sp_application_crypto::AppPublic;
 use sp_blockchain::HeaderBackend;
 use sp_consensus::{BlockOrigin, Environment, Error as ConsensusError, Proposer, SelectChain};
 use sp_consensus_slots::Slot;
+use sp_consensus_aura::digests::PreDigest;
 use sp_core::crypto::{Pair, Public};
 use sp_inherents::CreateInherentDataProviders;
 use sp_keystore::KeystorePtr;
@@ -275,8 +276,8 @@ pub fn build_aura_worker<P, B, C, PF, I, SO, L, BS, Error>(
 	BlockImport = I,
 	SyncOracle = SO,
 	JustificationSyncLink = L,
-	Claim = P::Public,
-	AuxData = (Vec<AuthorityId<P>>, Vec<u8>),
+	Claim = (PreDigest, P::Public),
+	AuxData = (Vec<AuthorityId<P>>, [u8;32]),
 >
 where
 	B: BlockT,
@@ -350,10 +351,9 @@ where
 	type CreateProposer =
 		Pin<Box<dyn Future<Output = Result<E::Proposer, ConsensusError>> + Send + 'static>>;
 	type Proposer = E::Proposer;
-	type Claim = P::Public;
+	type Claim = (PreDigest, P::Public);
 	// type AuxData = Vec<AuthorityId<P>>;
-	// For now I'll just use a u32... later on Vec<u8>
-	type AuxData = (Vec<AuthorityId<P>>, Vec<u8>);
+	type AuxData = (Vec<AuthorityId<P>>, [u8;32]);
 
 	fn logging_target(&self) -> &'static str {
 		"aura"
@@ -391,11 +391,16 @@ where
 		slot: Slot,
 		authorities: &Self::AuxData,
 	) -> Option<Self::Claim> {
-		crate::standalone::claim_slot::<P>(slot, &authorities.0, &self.keystore).await
+		crate::standalone::claim_slot::<P>(
+			slot, 
+			&authorities.1, 
+			&authorities.0, 
+			&self.keystore,
+		).await
 	}
 
-	fn pre_digest_data(&self, slot: Slot, _claim: &Self::Claim) -> Vec<sp_runtime::DigestItem> {
-		vec![crate::standalone::pre_digest::<P>(slot)]
+	fn pre_digest_data(&self, slot: Slot, claim: &Self::Claim) -> Vec<sp_runtime::DigestItem> {
+		vec![crate::standalone::pre_digest::<P>(claim.0.clone())]
 	}
 
 	// DRIEMWORKS::TODO
@@ -411,26 +416,10 @@ where
 		sc_consensus::BlockImportParams<B, <Self::BlockImport as BlockImport<B>>::Transaction>,
 		ConsensusError,
 	> {
-		// Option 1: I *should* be able to get the secret key by decoding the extrinsic
-		// loop over, parse out the one to reveal_slot_secret and get params
-		// https://substrate.stackexchange.com/questions/770/decode-extrinsic-on-substrate-side
-		// let secret_ext = &body[1];
-		// should be: 0407000<secret bytes>
-		// let secret_ext_string = format!("{:?}", secret_ext);
-		// let s = secret_ext_string.as_bytes();
-		// this will be 32 bytes when we get the real secret injected
-		// let secret = &s[7..s.len()-1];
-		// now with this secret, we can prepare our proof + signature
-
-		// panic!("{:?}", secret);
-
-		let secret = aux.1;
-
 		let signature_digest_item =
 			crate::standalone::dleq_seal::<_, P, B>(
 				header_hash, 
-				&public, 
-				&secret,
+				&public,
 				&self.keystore
 			)?;
 		// let signature_digest_item =
@@ -442,7 +431,6 @@ where
 		import_block.state_action =
 			StateAction::ApplyChanges(sc_consensus::StorageChanges::Changes(storage_changes));
 		import_block.fork_choice = Some(ForkChoiceStrategy::LongestChain);
-		import_block.auxiliary = vec![(b"secret".to_vec(), Some(secret))];
 
 		Ok(import_block)
 	}
@@ -456,7 +444,7 @@ where
 			if let Ok(chain_head_slot) = find_pre_digest::<B, P::Signature>(chain_head) {
 				return strategy.should_backoff(
 					*chain_head.number(),
-					chain_head_slot,
+					chain_head_slot.slot,
 					self.client.info().finalized_number,
 					slot,
 					self.logging_target(),
@@ -488,8 +476,9 @@ where
 	fn proposing_remaining_duration(&self, slot_info: &SlotInfo<B>) -> std::time::Duration {
 		let parent_slot = find_pre_digest::<B, P::Signature>(&slot_info.chain_head).ok();
 
+		// DRIEMWORKS::TODO handle unwrap?
 		sc_consensus_slots::proposing_remaining_duration(
-			parent_slot,
+			Some(parent_slot.unwrap().slot),
 			slot_info,
 			&self.block_proposal_slot_portion,
 			self.max_block_proposal_slot_portion.as_ref(),
@@ -593,7 +582,7 @@ fn secret<A, B, C>(
 	context_block_number: NumberFor<B>,
 	context_slot_number: Slot,
 	compatibility_mode: &CompatibilityMode<NumberFor<B>>,
-) -> Result<Vec<u8>, ConsensusError>
+) -> Result<[u8;32], ConsensusError>
 where 
 	A: Codec + Debug,
 	B: BlockT,

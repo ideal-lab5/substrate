@@ -82,9 +82,9 @@ impl SlotTimestampProvider {
 		let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
 		let time = Self::with_header(&client, slot_duration, |header| {
-			let slot_number = *sc_consensus_aura::find_pre_digest::<B, AuthoritySignature>(&header)
-				.map_err(|err| format!("{}", err))?;
-			Ok(slot_number)
+			let slot_number = sc_consensus_aura::find_pre_digest::<B, AuthoritySignature>(&header)
+				.map_err(|err| format!("{:?}", err))?;
+			Ok(slot_number.slot.into())
 		})?;
 
 		Ok(Self { unix_millis: atomic::AtomicU64::new(time), slot_duration })

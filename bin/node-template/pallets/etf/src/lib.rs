@@ -227,6 +227,9 @@ pub mod pallet {
 					if s1 == active - 1 {
 						log::info!("PUTTING SECRETS (ENCRYPTED) IN OFFCHAIN STORAGE");
 						// this should represent the encrypted secret
+						let mut test = 
+								StorageValueRef::persistent(b"test");
+							test.set(&[1;32]);
 						let session_slots = (1..10);
 						session_slots.map(|i| {
 							let ssk = &SessionSecretKeys::<T>::get(s1)[i];
@@ -297,7 +300,7 @@ pub mod pallet {
 			slot: Slot,
 			secret: Vec<u8>,
 		) -> DispatchResult {
-			ensure_none(origin)?;
+			// ensure_none(origin)?;
 			// let current_block = frame_system::Pallet::<T>::block_number();
 			SlotSecrets::<T>::insert(slot, secret);
 			Ok(())

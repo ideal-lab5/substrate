@@ -524,9 +524,9 @@ impl_runtime_apis! {
 			id.into()
 		}
 
-		fn secret(slot: Slot) -> Vec<u8> {
-			let mut secret = StorageValueRef::persistent(slot.to_string().as_bytes());
-			vec![]
+		fn secret(slot: Slot) -> [u8;32] {
+			// let mut secret = StorageValueRef::persistent(slot.to_string().as_bytes());
+			[2;32]
 		}
 	}
 

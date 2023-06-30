@@ -82,8 +82,9 @@ where
 
 		// we always calculate the new slot number based on the current time-stamp and the slot
 		// duration.
+		// DRIEMWORKS::TODO how to pass a secret?
 		let digest_item = <DigestItem as CompatibleDigestItem<AuthoritySignature>>::aura_pre_digest(
-			Slot::from_timestamp(timestamp, self.slot_duration),
+			sp_consensus_aura::digests::PreDigest{ slot: Slot::from_timestamp(timestamp, self.slot_duration), secret: [0;32] },
 		);
 
 		Ok(Digest { logs: vec![digest_item] })

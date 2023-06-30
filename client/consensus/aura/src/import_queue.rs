@@ -54,7 +54,7 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 fn check_header<C, B: BlockT, P: Pair>(
 	client: &C,
 	slot_now: Slot,
-	secret: Option<[u8;32]>,
+	secret: [u8;32],
 	header: B::Header,
 	hash: B::Hash,
 	authorities: &[AuthorityId<P>],
@@ -72,24 +72,24 @@ where
 
 	match check_result {
 		Ok((header, slot, seal)) => {
-			let expected_author = crate::standalone::slot_author::<P>(slot, &authorities);
+			let expected_author = crate::standalone::slot_author::<P>(slot.slot, &authorities);
 			let should_equiv_check = check_for_equivocation.check_for_equivocation();
 			if let (true, Some(expected)) = (should_equiv_check, expected_author) {
 				if let Some(equivocation_proof) =
-					check_equivocation(client, slot_now, slot, &header, expected)
+					check_equivocation(client, slot_now, slot.slot, &header, expected)
 						.map_err(Error::Client)?
 				{
 					info!(
 						target: LOG_TARGET,
 						"Slot author is equivocating at slot {} with headers {:?} and {:?}",
-						slot,
+						slot.slot,
 						equivocation_proof.first_header.hash(),
 						equivocation_proof.second_header.hash(),
 					);
-				}
+			}
 			}
 
-			Ok(CheckedHeader::Checked(header, (slot, seal)))
+			Ok(CheckedHeader::Checked(header, (slot.slot, seal)))
 		},
 		Err(SealVerificationError::Deferred(header, slot)) =>
 			Ok(CheckedHeader::Deferred(header, slot)),
@@ -197,17 +197,18 @@ where
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
 		// must have known size at compile time
-		// let mut secret: Option<[u8;32]> = None;
-		let secret: Option<[u8;32]> = if let Some(secret_slice) = &block.auxiliary[0].1 {
-			if secret_slice.len() == 32 {
-				let arr: [u8; 32] = secret_slice[0..32].try_into().unwrap();
-				Some(arr)
-			} else {
-				None
-			}
-		} else {
-			None
-		};
+		let mut secret: [u8; 32] = [0;32];
+		if block.auxiliary.len() > 0 {
+			if let Some(secret_slice) = &block.auxiliary[0].1 {
+				if secret_slice.len() == 32 {
+					secret = secret_slice[0..32].try_into().unwrap();
+				}
+			};
+		}
+
+		if secret != [0;32] {
+			panic!("in verify: {:?}", secret);
+		}
 		
 		// let secret = aux[0].1.unwrap_or(vec![]);
 
