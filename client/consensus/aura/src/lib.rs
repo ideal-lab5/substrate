@@ -410,20 +410,14 @@ where
 		header_hash: &B::Hash,
 		body: Vec<B::Extrinsic>,
 		storage_changes: StorageChanges<<Self::BlockImport as BlockImport<B>>::Transaction, B>,
-		public: Self::Claim,
+		(_, public): Self::Claim,
 		aux: Self::AuxData,
 	) -> Result<
 		sc_consensus::BlockImportParams<B, <Self::BlockImport as BlockImport<B>>::Transaction>,
 		ConsensusError,
 	> {
 		let signature_digest_item =
-			crate::standalone::dleq_seal::<_, P, B>(
-				header_hash, 
-				&public,
-				&self.keystore
-			)?;
-		// let signature_digest_item =
-		// 	crate::standalone::seal::<_, P>(header_hash, &public, &self.keystore)?;
+			crate::standalone::seal::<_, P>(header_hash, &public, &self.keystore)?;
 
 		let mut import_block = BlockImportParams::new(BlockOrigin::Own, header);
 		import_block.post_digests.push(signature_digest_item);

@@ -25,6 +25,10 @@ sp-runtime = { version = "24.0.0", default-features = false, path = "../../runti
 sp-std = { version = "8.0.0", default-features = false, path = "../../std" }
 sp-timestamp = { version = "4.0.0-dev", default-features = false, path = "../../timestamp" }
 
+#dleq_vrf = { git = 'https://github.com/w3f/ring-vrf/', default-features = false, features = ["getrandom"] }
+#getrandom = { version = "0.2", features = ["js"] }
+#ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+
 [features]
 default = ["std"]
 std = [
@@ -39,6 +43,7 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"sp-timestamp/std",
+	#"ark-bls12-381/std",
 ]
 
 # Serde support without relying on std features.

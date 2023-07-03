@@ -9251,9 +9251,15 @@ dependencies = [
 name = "sc-consensus-aura"
 version = "0.10.0-dev"
 dependencies = [
+ "ark-bls12-381",
+ "ark-ec",
+ "ark-ff",
+ "ark-serialize",
+ "ark-std",
  "async-trait",
  "dleq_vrf",
  "futures",
+ "getrandom 0.2.9",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -9265,6 +9271,7 @@ dependencies = [
  "sc-network",
  "sc-network-test",
  "sc-telemetry",
+ "sha2 0.10.6",
  "sp-api",
  "sp-application-crypto",
  "sp-block-builder",

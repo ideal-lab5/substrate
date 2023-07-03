@@ -30,17 +30,19 @@ use sp_runtime::{
 	RuntimeDebug, 
 	generic::DigestItem,
 };
-// use sp_core::sr25519::vrf::VrfSignature;
+use sp_std::vec::Vec;
 
-/// Raw BABE primary slot assignment pre-digest.
+/// Raw IBE/ETF slot assignment pre-digest.
 #[derive(Clone, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct PreDigest {
 	// /// Authority index
 	// pub authority_index: super::AuthorityIndex,
 	/// Slot
 	pub slot: Slot,
-	/// VRF signature
+	/// the slot secret
 	pub secret: [u8;32],
+	/// VRF signature
+	pub vrf_signature: [u8;80],
 }
 
 /// A digest item which is usable with aura consensus.

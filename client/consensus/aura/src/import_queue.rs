@@ -54,7 +54,6 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 fn check_header<C, B: BlockT, P: Pair>(
 	client: &C,
 	slot_now: Slot,
-	secret: [u8;32],
 	header: B::Header,
 	hash: B::Hash,
 	authorities: &[AuthorityId<P>],
@@ -67,7 +66,7 @@ where
 {
 	let check_result =
 		crate::standalone::check_header_slot_and_seal::<B, P>(
-			slot_now, secret, header, authorities
+			slot_now, header, authorities
 		);
 
 	match check_result {
@@ -196,26 +195,6 @@ where
 
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
-		// must have known size at compile time
-		let mut secret: [u8; 32] = [0;32];
-		if block.auxiliary.len() > 0 {
-			if let Some(secret_slice) = &block.auxiliary[0].1 {
-				if secret_slice.len() == 32 {
-					secret = secret_slice[0..32].try_into().unwrap();
-				}
-			};
-		}
-
-		if secret != [0;32] {
-			panic!("in verify: {:?}", secret);
-		}
-		
-		// let secret = aux[0].1.unwrap_or(vec![]);
-
-		// if the secret is not availabe, we should default
-		// to not checking the DLEQ proof
-
-		// if it is available then we should check the proof
 
 		let authorities = authorities(
 			self.client.as_ref(),
@@ -237,6 +216,7 @@ where
 			.map_err(Error::<B>::Inherent)?;
 
 		let slot_now = create_inherent_data_providers.slot();
+		// I still think it makes sense to try to get the secret this way as well.. but how?
 		// let slot_secret = create_inherent_data_providers.secret();
 
 		// we add one to allow for some small drift.
@@ -245,7 +225,7 @@ where
 		let checked_header = check_header::<C, B, P>(
 			&self.client,
 			slot_now + 1,
-			secret,
+			// secret,
 			block.header,
 			hash,
 			&authorities[..],

@@ -201,7 +201,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 		let slot = slot_info.slot;
 		let telemetry = self.telemetry();
 		let log_target = self.logging_target();
-
+		// DRIEMWORKS::TODO We could modify this to pass the secret
 		let inherent_data =
 			Self::create_inherent_data(&slot_info, &log_target, end_proposing_at).await?;
 

@@ -1,6 +1,6 @@
 // This file is part of Substrate.
 
-// Copyright (C) Parity Technologies (UK) Ltd.
+// Copyright (C) Parity Technologies (UK) Ltd. & Ideal Labs (USA) <--- how does that work?
 // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
 // This program is free software: you can redistribute it and/or modify
@@ -37,12 +37,36 @@ use sp_runtime::{
 	DigestItem,
 };
 use sp_consensus_aura::digests::PreDigest;
+use dleq_vrf::{
+	Transcript, vrf, 
+	Signature, 
+	SecretKey as SK, 
+	ThinVrf as Vrf, 
+};
+use ark_serialize::{CanonicalSerialize,CanonicalDeserialize};
 
 pub use sc_consensus_slots::check_equivocation;
 
 use super::{
-	AuraApi, AuthorityId, CompatibilityMode, CompatibleDigestItem, SlotDuration, LOG_TARGET,
+	AuraApi, 
+	AuthorityId, 
+	CompatibilityMode, 
+	CompatibleDigestItem, 
+	SlotDuration, 
+	LOG_TARGET,
 };
+
+type K = ark_bls12_381::G1Affine;
+
+type SecretKey = SK<K>;
+
+type ThinVrf = Vrf<K>;
+
+type H2C = ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher::<
+    <K as ark_ec::AffineRepr>::Group,
+    ark_ff::fields::field_hashers::DefaultFieldHasher<sha2::Sha256>,
+    ark_ec::hashing::curve_maps::wb::WBMap<ark_bls12_381::g1::Config>,
+>;
 
 /// Get the slot duration for Aura by reading from a runtime API at the best block's state.
 pub fn slot_duration<A, B, C>(client: &C) -> CResult<SlotDuration>
@@ -101,7 +125,30 @@ pub async fn claim_slot<P: Pair>(
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
-			let pre_digest = PreDigest { slot: slot, secret: *secret };
+			// now we need to prepare the DLEQ proof...
+			// https://github.com/w3f/Grants-Program/pull/1660#issuecomment-1563616111
+			let mut t_0 = Transcript::new_labeled(b"TestFlavor");
+			let mut reader = t_0.challenge(b"Keying&Blinding");
+			let vrf = ThinVrf { keying_base: reader.read_uniform() };
+			let mut sk = SecretKey::ephemeral(vrf.clone());
+
+			// TODO: this should take [u8;32] instead?
+			let mk_io = |n: u64| {
+				let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n.to_le_bytes()[..]).unwrap();
+				sk.vrf_inout(input)
+			};
+			let ios: [vrf::VrfInOut<K>; 4] = [mk_io(slot.into()), mk_io(1), mk_io(2), mk_io(3)];
+			let t = Transcript::new_labeled(b"etf");
+
+			let mut out = ark_std::vec::Vec::new();
+		    let sig_thin: Signature<ThinVrf> = sk.sign_thin_vrf(t, &ios[0..2]);
+			sig_thin.serialize_compressed(&mut out);
+
+			let pre_digest = PreDigest {
+				slot: slot, 
+				secret: *secret, 
+				vrf_signature: out.try_into().unwrap(),
+			};
 			Some((pre_digest.clone(), p.clone()))
 		} else {
 			None
@@ -159,82 +206,6 @@ where
 	Ok(signature_digest_item)
 }
 
-/// Produce the seal digest item by signing the hash of a block.
-///
-/// Note that after this is added to a block header, the hash of the block will change.
-pub fn dleq_seal<Hash, P, B>(
-	header_hash: &Hash,
-	public: &(PreDigest, P::Public),
-	// secret: &Vec<u8>,
-	keystore: &KeystorePtr,
-) -> Result<sp_runtime::DigestItem, ConsensusError>
-where
-	Hash: AsRef<[u8]>,
-	P: Pair,
-	P::Signature: Codec + TryFrom<Vec<u8>>,
-	P::Public: AppPublic,
-	B: BlockT,
-{
-	// try to extract the secret from the vec of extrinsics
-	// if not found, then default to 'seal'
-	let signature = keystore
-		.sign_with(
-			<AuthorityId<P> as AppCrypto>::ID,
-			<AuthorityId<P> as AppCrypto>::CRYPTO_ID,
-			public.1.as_slice(),
-			header_hash.as_ref(),
-		)
-		.map_err(|e| ConsensusError::CannotSign(format!("{}. Key: {:?}", e, public)))?
-		.ok_or_else(|| {
-			ConsensusError::CannotSign(format!("Could not find key in keystore. Key: {:?}", public))
-		})?;
-
-	// let signature = self
-	// 	.keystore
-	// 	.sr25519_sign(
-	// 		<AuthorityId as AppCrypto>::ID, 
-	// 		public.as_ref(), 
-	// 		header_hash.as_ref()
-	// 	).map_err(|e| ConsensusError::CannotSign(
-	// 		format!("{}. Key: {:?}", e, public))
-	// 	)?.ok_or_else(|| {
-	// 		ConsensusError::CannotSign(format!(
-	// 			"Could not find key in keystore. Key: {:?}",
-	// 			public
-	// 		))
-	// 	})?;
-
-	// let client = client.runtime_api();
-	// let slot_identity = client.identity(slot);
-	// now I want to read the secret from the block itself...
-	// and then use this to calculate the slot secret
-
-	
-	// here's where things get tricky...
-	// I need to get a secret value from the keystore to use for signing...
-	// the keypair is (Q_{ID}, sQ_{ID})
-    // let mut sk = SecretKey::ephemeral((*flavor).clone());
-
-    // let mk_io = |n: u32| {
-    //     let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO",&n.to_le_bytes()[..]).unwrap();
-    //     sk.vrf_inout(input)
-    // };
-    // let ios: [vrf::VrfInOut<K>; 4] = [mk_io(0), mk_io(1), mk_io(2), mk_io(3)];
-    // let t = Transcript::new_labeled(b"auraseal");
-    // let sig_thin = sk.sign_thin_vrf(t, &ios[0..2]);
-	
-	let signature = signature
-		.clone()
-		.try_into()
-		.map_err(|_| ConsensusError::InvalidSignature(signature, public.1.to_raw_vec()))?;
-
-	let signature_digest_item =
-		<DigestItem as CompatibleDigestItem<P::Signature>>::aura_seal(signature);
-
-	Ok(signature_digest_item)
-}
-
-
 /// Errors in pre-digest lookup.
 #[derive(Debug, thiserror::Error)]
 pub enum PreDigestLookupError {
@@ -255,7 +226,7 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	header: &B::Header,
 ) -> Result<PreDigest, PreDigestLookupError> {
 	if header.number().is_zero() {
-		return Ok(PreDigest{ slot: 0.into(), secret: [0;32] });
+		return Ok(PreDigest{ slot: 0.into(), secret: [0;32], vrf_signature: [0;80] });
 	}
 
 	let mut pre_digest: Option<PreDigest> = None;
@@ -372,7 +343,6 @@ pub enum SealVerificationError<Header> {
 /// This digest item will always return `Some` when used with `as_aura_seal`.
 pub fn check_header_slot_and_seal<B: BlockT, P: Pair>(
 	slot_now: Slot,
-	secret: [u8;32],
 	mut header: B::Header,
 	authorities: &[AuthorityId<P>],
 ) -> Result<(B::Header, PreDigest, DigestItem), SealVerificationError<B::Header>>
@@ -384,25 +354,28 @@ where
 
 	let sig = seal.as_aura_seal().ok_or(SealVerificationError::BadSeal)?;
 
-	let slot = find_pre_digest::<B, P::Signature>(&header)
+	let claim = find_pre_digest::<B, P::Signature>(&header)
 		.map_err(SealVerificationError::InvalidPreDigest)?;
+	let slot = claim.slot;
 
-	if slot.slot > slot_now {
+	// the slot cannot be in the future
+	if slot > slot_now {
 		header.digest_mut().push(seal);
-		return Err(SealVerificationError::Deferred(header, slot.slot))
+		return Err(SealVerificationError::Deferred(header, slot))
 	} else {
 		// DRIEMWORKS::TODO 
-		// this is where we would verify the DLEQ proof
+		// is this where we would verify the DLEQ proof?
+		let secret = claim.secret; 
 
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let expected_author =
-			slot_author::<P>(slot.slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
+			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
 
 		let pre_hash = header.hash();
 
 		if P::verify(&sig, pre_hash.as_ref(), expected_author) {
-			Ok((header, slot, seal))
+			Ok((header, claim, seal))
 		} else {
 			Err(SealVerificationError::BadSignature)
 		}
