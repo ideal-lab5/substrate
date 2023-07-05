@@ -87,6 +87,7 @@ where
 				slot: Slot::from_timestamp(timestamp, self.slot_duration), 
 				secret: [0;32], 
 				vrf_signature: [0;80],
+				vrf_pubkey: [0;32],
 			},
 		);
 

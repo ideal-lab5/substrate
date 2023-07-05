@@ -22,7 +22,7 @@
 //! agree on the current time. Time is divided up into discrete slots of t
 //! seconds each. For each slot s, the author of that slot is A[s % |A|].
 //!
-//! The author is allowed to issue one block but not more during that slot,
+//! The author is allowed to claim_slot one block but not more during that slot,
 //! and it will be built upon the longest valid chain that has been seen.
 //!
 //! Blocks from future steps will be either deferred or rejected depending on how
@@ -391,6 +391,7 @@ where
 		slot: Slot,
 		authorities: &Self::AuxData,
 	) -> Option<Self::Claim> {
+		// DRIEMWORKS::TODO: pass the block hash to claim_slot so we can use it when calling the vrf 
 		crate::standalone::claim_slot::<P>(
 			slot, 
 			&authorities.1, 

@@ -133,21 +133,31 @@ pub async fn claim_slot<P: Pair>(
 			let mut sk = SecretKey::ephemeral(vrf.clone());
 
 			// TODO: this should take [u8;32] instead?
-			let mk_io = |n: u64| {
-				let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n.to_le_bytes()[..]).unwrap();
+			let mk_io = |n: Vec<u8>| {
+				let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n).unwrap();
 				sk.vrf_inout(input)
 			};
-			let ios: [vrf::VrfInOut<K>; 4] = [mk_io(slot.into()), mk_io(1), mk_io(2), mk_io(3)];
+			let sec: Vec<u8> = (*secret).into();
+			let ios: [vrf::VrfInOut<K>; 3] = [
+				mk_io(slot.to_le_bytes()[..].into()), 
+				mk_io(sec), 
+				mk_io([2;32].into()),
+			];
+
 			let t = Transcript::new_labeled(b"etf");
 
-			let mut out = ark_std::vec::Vec::new();
+			let mut sig_out = ark_std::vec::Vec::new();
 		    let sig_thin: Signature<ThinVrf> = sk.sign_thin_vrf(t, &ios[0..2]);
-			sig_thin.serialize_compressed(&mut out);
+			sig_thin.serialize_compressed(&mut sig_out);
+
+			let mut pk_out = ark_std::vec::Vec::new();
+			let pk = sk.as_publickey().serialize_compressed(&mut pk_out).unwrap();
 
 			let pre_digest = PreDigest {
 				slot: slot, 
-				secret: *secret, 
-				vrf_signature: out.try_into().unwrap(),
+				secret: *secret,
+				vrf_signature: sig_out.try_into().unwrap(),
+				vrf_pubkey: pk_out.try_into().unwrap(),
 			};
 			Some((pre_digest.clone(), p.clone()))
 		} else {
@@ -226,7 +236,7 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	header: &B::Header,
 ) -> Result<PreDigest, PreDigestLookupError> {
 	if header.number().is_zero() {
-		return Ok(PreDigest{ slot: 0.into(), secret: [0;32], vrf_signature: [0;80] });
+		return Ok(PreDigest{ slot: 0.into(), secret: [0;32], vrf_signature: [0;80], vrf_pubkey: [0;32] });
 	}
 
 	let mut pre_digest: Option<PreDigest> = None;
@@ -366,10 +376,32 @@ where
 		// DRIEMWORKS::TODO 
 		// is this where we would verify the DLEQ proof?
 		let secret = claim.secret; 
+		// let pk = claim.vrf_pubkey;
+		let vrf_sig = claim.vrf_signature;
+		// sk.as_publickey().serialize_compressed(&mut buf).unwrap();
+		
+		let mut t_0 = Transcript::new_labeled(b"TestFlavor");
+		let mut reader = t_0.challenge(b"Keying&Blinding");
+		let vrf = ThinVrf { keying_base: reader.read_uniform() };
+		// let mut sk = SecretKey::ephemeral(vrf.clone());
+
+		// // TODO: this should take [u8;32] instead?
+		// let mk_io = |n: u64| {
+		// 	let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n.to_le_bytes()[..]).unwrap();
+		// 	sk.vrf_inout(input)
+		// };
+		// let ios: [vrf::VrfInOut<K>; 4] = [mk_io(slot.into()), mk_io(1), mk_io(2), mk_io(3)];
+		let t = Transcript::new_labeled(b"etf");
+		// TODO: pass pk too?
+		// match vrf.verify_thin_vrf(t, &ios[0..2], &pk, &sig_thin) {
+		// 	Ok(_) => { /* all good */ },
+		// 	Err(e) => panic!("{:?}", e),
+		// }
 
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let expected_author =
+		// let pk = crate::PublicKey::deserialize_compressed(buf.as_ref()).unwrap();
 			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
 
 		let pre_hash = header.hash();
