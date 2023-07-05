@@ -40,6 +40,7 @@ use sp_consensus_aura::digests::PreDigest;
 use dleq_vrf::{
 	Transcript, vrf, 
 	Signature, 
+	PublicKey,
 	SecretKey as SK, 
 	ThinVrf as Vrf, 
 };
@@ -236,7 +237,7 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	header: &B::Header,
 ) -> Result<PreDigest, PreDigestLookupError> {
 	if header.number().is_zero() {
-		return Ok(PreDigest{ slot: 0.into(), secret: [0;32], vrf_signature: [0;80], vrf_pubkey: [0;32] });
+		return Ok(PreDigest{ slot: 0.into(), secret: [0;32], vrf_signature: [0;80], vrf_pubkey: [0;48] });
 	}
 
 	let mut pre_digest: Option<PreDigest> = None;
@@ -376,32 +377,38 @@ where
 		// DRIEMWORKS::TODO 
 		// is this where we would verify the DLEQ proof?
 		let secret = claim.secret; 
-		// let pk = claim.vrf_pubkey;
-		let vrf_sig = claim.vrf_signature;
+		let pk_buf = claim.vrf_pubkey;
+		let pk = PublicKey::deserialize_compressed(pk_buf.as_ref()).unwrap();
+
+		let vrf_sig_buf = claim.vrf_signature;
+		let sig_thin = Signature::deserialize_compressed(vrf_sig_buf.as_ref()).unwrap();
+
 		// sk.as_publickey().serialize_compressed(&mut buf).unwrap();
 		
 		let mut t_0 = Transcript::new_labeled(b"TestFlavor");
 		let mut reader = t_0.challenge(b"Keying&Blinding");
 		let vrf = ThinVrf { keying_base: reader.read_uniform() };
-		// let mut sk = SecretKey::ephemeral(vrf.clone());
+		let mut sk = SecretKey::ephemeral(vrf.clone());
 
-		// // TODO: this should take [u8;32] instead?
-		// let mk_io = |n: u64| {
-		// 	let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n.to_le_bytes()[..]).unwrap();
-		// 	sk.vrf_inout(input)
-		// };
-		// let ios: [vrf::VrfInOut<K>; 4] = [mk_io(slot.into()), mk_io(1), mk_io(2), mk_io(3)];
+		let mk_io = |n: Vec<u8>| {
+			let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n).unwrap();
+			sk.vrf_inout(input)
+		};
+		
+		let ios: [vrf::VrfInOut<K>; 3] = [
+			mk_io(slot.to_le_bytes()[..].into()), 
+			mk_io(secret.into()), 
+			mk_io([2;32].into()),
+		];
 		let t = Transcript::new_labeled(b"etf");
-		// TODO: pass pk too?
-		// match vrf.verify_thin_vrf(t, &ios[0..2], &pk, &sig_thin) {
-		// 	Ok(_) => { /* all good */ },
-		// 	Err(e) => panic!("{:?}", e),
-		// }
+		match vrf.verify_thin_vrf(t, &ios[0..2], &pk, &sig_thin) {
+			Ok(_) => { /* all good */ },
+			Err(e) => panic!("{:?}", e),
+		}
 
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let expected_author =
-		// let pk = crate::PublicKey::deserialize_compressed(buf.as_ref()).unwrap();
 			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
 
 		let pre_hash = header.hash();

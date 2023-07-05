@@ -43,8 +43,7 @@ pub struct PreDigest {
 	pub secret: [u8;32],
 	/// VRF signature
 	pub vrf_signature: [u8;80],
-	/// TODO: verify size
-	pub vrf_pubkey: [u8;32],
+	pub vrf_pubkey: [u8;48],
 }
 
 /// A digest item which is usable with aura consensus.
