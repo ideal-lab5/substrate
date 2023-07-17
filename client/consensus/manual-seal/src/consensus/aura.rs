@@ -86,8 +86,12 @@ where
 			sp_consensus_aura::digests::PreDigest{ 
 				slot: Slot::from_timestamp(timestamp, self.slot_duration), 
 				secret: [0;32], 
-				vrf_signature: [0;80],
-				vrf_pubkey: [0;48],
+				challenge: [0;48],
+				witness: [0;32],
+				pps: ([0;48], [0;48]),
+				// vrf_signature: [0;80],
+				// vrf_public: [0;48],
+				// ios: [0;32],
 			},
 		);
 

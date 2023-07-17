@@ -107,7 +107,7 @@ pub fn new_partial(
 			block_import: grandpa_block_import.clone(),
 			justification_import: Some(Box::new(grandpa_block_import.clone())),
 			client: client.clone(),
-			create_inherent_data_providers: move |_, ()| async move {
+			create_inherent_data_providers: move |_, s: Vec<u8>| async move {
 				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 				let slot =
@@ -116,7 +116,9 @@ pub fn new_partial(
 						slot_duration,
 					);
 
-				Ok((slot, timestamp))
+				let secret = sp_consensus_etf::InherentDataProvider::create(s);
+
+				Ok((slot, secret, timestamp))
 			},
 			spawner: &task_manager.spawn_essential_handle(),
 			registry: config.prometheus_registry(),

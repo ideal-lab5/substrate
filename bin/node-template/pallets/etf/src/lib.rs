@@ -141,11 +141,13 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn session_secret_keys)]
-	pub type SessionSecretKeys<T: Config> = StorageMap<
+	pub type SessionSecretKeys<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128,
+		Slot,
+		Blake2_128,
 		SessionIndex,
-		Vec<(u32, Vec<u8>)>, // TODO: update this: Slot -> Vec<EncryptedSecret>? 
+		Vec<Vec<u8>>, // TODO: update this: Slot -> Vec<EncryptedSecret>? 
 		ValueQuery,
 	>;
 
@@ -209,50 +211,61 @@ pub mod pallet {
 			let next = CurrentSessionIndex::<T>::get();
 			let current = CurrentSessionIndex::<T>::get();
 			let active = ActiveSessionIndex::<T>::get();
-			// stage0: keygen
-			let mut stage_0 = StorageValueRef::persistent(b"STAGE0");
-			// stage1: secret derivation and storage
-			let mut stage_1 = StorageValueRef::persistent(b"STAGE1");
-			// won't trigger the first session..
-			if let Some(s0) = stage_0.get::<u32>().unwrap_or(Some(0)) {
-				// genesis or between session end and planning
-				if s0 == (next as u32) - 1  && next > active {
-					log::info!("CALLING REFRESH KEYS");
-					// the session has ended, setup keys for next session
-					Self::refresh_keys(next, Self::validators().into());
-					stage_0.set(&next);
-				} else if let Some(s1) = stage_1.get::<u32>().unwrap_or(Some(0)) { 
-					// this should be triggered when start_session is called
-					// i.e. when the active session has incremented
-					if s1 == active - 1 {
-						// this should represent the encrypted secret
-						let mut test = 
-								StorageValueRef::persistent(b"test");
-							test.set(&[3;32]);
-						// we know there are 10 slots in the session obviously we need
-						// to actually caluclate this, not just hard code ;)
-						
-						let start = TryInto::<u32>::try_into(block_number).ok().unwrap();
-						let end_block_number: u32 = start + 10u32;
-						log::info!("Writing secret for slots from block {:?} to {:?}",
-							block_number, end_block_number);
-						let session_slots = (start..end_block_number);
-						session_slots.map(|i: u32| {
-							let ssk = &SessionSecretKeys::<T>::get(s1)[i as usize];
-							let key = i.to_string();
-							let mut secret = 
-								StorageValueRef::persistent(key.as_bytes());
-							secret.set(ssk);
-						});
-						stage_1.set(&current);
-					}
-				} else {
-					stage_1.set(&0);
-				}
-			} else {
-				// do nothing for now?
-				stage_0.set(&0);
+
+			// if ending a session => submit new keys
+			if next == active + 1 {
+				Self::refresh_keys(next, Self::validators().into());
 			}
+			// // if planning an upcoming session, then calculate new key shares
+			// if current == active + 1 {
+			// 	// TODO
+			// 	// Self::update_keys(current, Self::validators().into());
+			// }
+
+			// // stage0: keygen
+			// let mut stage_0 = StorageValueRef::persistent(b"STAGE0");
+			// // stage1: secret derivation and storage
+			// let mut stage_1 = StorageValueRef::persistent(b"STAGE1");
+			// // won't trigger the first session..
+			// if let Some(s0) = stage_0.get::<u32>().unwrap_or(Some(0)) {
+			// 	// genesis or between session end and planning
+			// 	if s0 == (next as u32) - 1  && next > active {
+			// 		log::info!("CALLING REFRESH KEYS");
+			// 		// the session has ended, setup keys for next session
+			// 		Self::refresh_keys(next, Self::validators().into());
+			// 		stage_0.set(&next);
+			// 	} else if let Some(s1) = stage_1.get::<u32>().unwrap_or(Some(0)) { 
+			// 		// this should be triggered when start_session is called
+			// 		// i.e. when the active session has incremented
+			// 		if s1 == active - 1 {
+			// 			// this should represent the encrypted secret
+			// 			let mut test = 
+			// 					StorageValueRef::persistent(b"test");
+			// 				test.set(&[3;32]);
+			// 			// we know there are 10 slots in the session obviously we need
+			// 			// to actually caluclate this, not just hard code ;)
+						
+			// 			let start = TryInto::<u64>::try_into(block_number).ok().unwrap();
+			// 			let end_block_number: u64 = start + 10u64;
+			// 			log::info!("Writing secret for slots from block {:?} to {:?}",
+			// 				block_number, end_block_number);
+			// 			let session_slots = (start..end_block_number);
+			// 			session_slots.map(|i: u64| {
+			// 				let ssk = &SessionSecretKeys::<T>::get(s1)[i as usize];
+			// 				let key = i.to_string();
+			// 				let mut secret = 
+			// 					StorageValueRef::persistent(key.as_bytes());
+			// 				secret.set(ssk);
+			// 			});
+			// 			stage_1.set(&current);
+			// 		}
+			// 	} else {
+			// 		stage_1.set(&0);
+			// 	}
+			// } else {
+			// 	// do nothing for now?
+			// 	stage_0.set(&0);
+			// }
 
 			// TODO [#3398] Generate offence report for all authorities that skipped their
 			// slots.
@@ -273,9 +286,12 @@ pub mod pallet {
 		 const INHERENT_IDENTIFIER: InherentIdentifier = INHERENT_IDENTIFIER;
  
 		 fn create_inherent(data: &InherentData) -> Option<Self::Call> {
+			log::info!("Calling the inherent");
 			let slot: Slot = data.get_data(b"auraslot").ok().flatten()?;
+			log::info!("Found slot: {:?}", slot);
 			let secret: Vec<u8> =
 				data.get_data(&Self::INHERENT_IDENTIFIER).ok().flatten()?;
+			log::info!("found secret: {:?}", secret);
 			Some(Call::reveal_slot_secret { slot, secret })
 		 }
  
@@ -310,7 +326,6 @@ pub mod pallet {
 			secret: Vec<u8>,
 		) -> DispatchResult {
 			// ensure_none(origin)?;
-			// let current_block = frame_system::Pallet::<T>::block_number();
 			SlotSecrets::<T>::insert(slot, secret);
 			Ok(())
 		}
@@ -322,13 +337,16 @@ pub mod pallet {
 		pub fn submit_session_artifacts(
 			origin: OriginFor<T>,
 			session_index: SessionIndex,
-			session_secrets: Vec<(u32, Vec<u8>)>,
+			session_secrets: Vec<(u64, Vec<u8>)>,
 		) -> DispatchResult {
 			log::info!("submitting session artifacts");
-			let _who = ensure_signed(origin)?;
-			SessionSecretKeys::<T>::insert(
-				session_index.clone(), session_secrets
-			);
+			let who = ensure_signed(origin)?;
+			// this seems overly expensive..
+			for (idx, sk) in session_secrets.iter() {
+				SessionSecretKeys::<T>::mutate(idx, session_index.clone(), |secrets| {
+					secrets.push(sk.clone());
+				});
+			}
 			Ok(())
 		}
 	}
@@ -386,15 +404,9 @@ impl<T: Config> Pallet<T> {
 		let encoded_secrets = secret_shares.iter().enumerate().map(|(i, s)| {
 			let mut bytes: Vec<u8> = Vec::new();
 			s.serialize_compressed(&mut bytes).unwrap();
-			(i as u32, bytes)
-		}).collect::<Vec<(u32, Vec<u8>)>>();
-		// still having problems with group operations
-		// let generator = G1Projective::rand(&mut rng).into_affine();
-		// let p_pub = generator.mul(master_secret);
-		// let mut mpk_bytes = Vec::new();
-		// p_pub.serialize_compressed(&mut mpk_bytes.clone()).unwrap();
+			(i as u64, bytes)
+		}).collect::<Vec<(u64, Vec<u8>)>>();
 
-		// DRIEMWORKS::TODO: Require some type of proof that we verify when checking unsigned tx
 		let signer = Signer::<T, T::AuthorityId>::all_accounts();
 		if !signer.can_sign() {
 			return Err(Error::<T>::InvalidSigner);
@@ -421,7 +433,6 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 	// https://github.com/paritytech/substrate/issues/8312
 	fn new_session(new_index: u32) -> Option<Vec<T::AccountId>> {
 		log::info!("Starting new session with index: {:?}", new_index);
-		// check who gave keys
 		CurrentSessionIndex::<T>::put(new_index);
 		Some(Self::validators().into())
 	}

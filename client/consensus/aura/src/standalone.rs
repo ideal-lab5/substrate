@@ -24,6 +24,8 @@ use log::trace;
 
 use codec::Codec;
 
+use codec::{Encode, Decode};
+
 use sc_client_api::{backend::AuxStore, UsageProvider};
 use sp_api::{Core, ProvideRuntimeApi};
 use sp_application_crypto::{AppCrypto, AppPublic};
@@ -33,7 +35,7 @@ use sp_consensus_slots::Slot;
 use sp_core::crypto::{ByteArray, Pair};
 use sp_keystore::KeystorePtr;
 use sp_runtime::{
-	traits::{Block as BlockT, Header, NumberFor, Zero},
+	traits::{Block as BlockT, Header, NumberFor, Zero, TrailingZeroInput},
 	DigestItem,
 };
 use sp_consensus_aura::digests::PreDigest;
@@ -44,7 +46,15 @@ use dleq_vrf::{
 	SecretKey as SK, 
 	ThinVrf as Vrf, 
 };
-use ark_serialize::{CanonicalSerialize,CanonicalDeserialize};
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
+use ark_std::{UniformRand, ops::Mul};
+use rand_chacha::{
+	ChaCha20Rng,
+	rand_core::SeedableRng,
+};
+use ark_ff::{PrimeField, fields::models::fp::Fp};
+use ark_ec::AffineRepr;
+use sha2::digest::Update;
 
 pub use sc_consensus_slots::check_equivocation;
 
@@ -56,6 +66,7 @@ use super::{
 	SlotDuration, 
 	LOG_TARGET,
 };
+use ark_bls12_381::Fr;
 
 type K = ark_bls12_381::G1Affine;
 
@@ -114,51 +125,57 @@ pub fn slot_author<P: Pair>(slot: Slot, authorities: &[AuthorityId<P>]) -> Optio
 ///
 /// This returns `None` if the slot author is not locally controlled, and `Some` if it is,
 /// with the public key of the slot author.
-pub async fn claim_slot<P: Pair>(
+pub async fn claim_slot<B, P: Pair>(
 	slot: Slot,
+	block_hash: B::Hash,
 	secret: &[u8;32],
 	authorities: &[AuthorityId<P>],
 	keystore: &KeystorePtr,
-) -> Option<(PreDigest, P::Public)> {
+) -> Option<(PreDigest, P::Public)> 
+	where B: BlockT {
 	// DRIEMWORKS::TODO should I replace this with expected_identity?
 	// let expected_author = Hash-to-G1(identity::<P>(slot, authorities));
 	// what if, when claiming the slot they decrypt
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
-			// now we need to prepare the DLEQ proof...
-			// https://github.com/w3f/Grants-Program/pull/1660#issuecomment-1563616111
-			let mut t_0 = Transcript::new_labeled(b"TestFlavor");
-			let mut reader = t_0.challenge(b"Keying&Blinding");
-			let vrf = ThinVrf { keying_base: reader.read_uniform() };
-			let mut sk = SecretKey::ephemeral(vrf.clone());
+			let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(secret.as_ref()))
+				.expect("input is padded with zeroes; qed");
+			let mut rng = ChaCha20Rng::from_seed(seed);
+			let mut transcript = Transcript::new_labeled(b"etf");
+			// both in G1
+			let b = K::rand(&mut rng);
+			let h = K::rand(&mut rng);
 
-			// TODO: this should take [u8;32] instead?
-			let mk_io = |n: Vec<u8>| {
-				let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n).unwrap();
-				sk.vrf_inout(input)
-			};
-			let sec: Vec<u8> = (*secret).into();
-			let ios: [vrf::VrfInOut<K>; 3] = [
-				mk_io(slot.to_le_bytes()[..].into()), 
-				mk_io(sec), 
-				mk_io([2;32].into()),
-			];
+			let mut b_out = Vec::new();
+			b.serialize_compressed(&mut b_out);
+			let mut p_out = Vec::new();
+			h.serialize_compressed(&mut p_out);
 
-			let t = Transcript::new_labeled(b"etf");
+			let mut t = Transcript::new_labeled(b"etf");
+			t.append(&b);
+			t.append(&h);
 
-			let mut sig_out = ark_std::vec::Vec::new();
-		    let sig_thin: Signature<ThinVrf> = sk.sign_thin_vrf(t, &ios[0..2]);
-			sig_thin.serialize_compressed(&mut sig_out);
+			let mut reader = t.fork(b"secret").chain(secret.clone()).witness(&mut rng);
+			let r: Fr = reader.read_uniform::<Fr>();
+			let commitment: K = (b * r).into();
+			t.append(&commitment);
+			let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
+			let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
+			let x: Fr = Fr::from_be_bytes_mod_order(secret);
+			let s = r + c * x; 
+			let mut commitment_out = Vec::new();
+			commitment.serialize_compressed(&mut commitment_out).unwrap();
 
-			let mut pk_out = ark_std::vec::Vec::new();
-			let pk = sk.as_publickey().serialize_compressed(&mut pk_out).unwrap();
+			let mut s_out = Vec::new();
+			s.serialize_compressed(&mut s_out).unwrap();
 
 			let pre_digest = PreDigest {
 				slot: slot, 
 				secret: *secret,
-				vrf_signature: sig_out.try_into().unwrap(),
-				vrf_pubkey: pk_out.try_into().unwrap(),
+				challenge: commitment_out.try_into().unwrap(),
+				witness: s_out.try_into().unwrap(), // I don't think the name is correct.. but w/e
+				pps: (b_out.try_into().unwrap(), p_out.try_into().unwrap()),
 			};
 			Some((pre_digest.clone(), p.clone()))
 		} else {
@@ -237,7 +254,16 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	header: &B::Header,
 ) -> Result<PreDigest, PreDigestLookupError> {
 	if header.number().is_zero() {
-		return Ok(PreDigest{ slot: 0.into(), secret: [0;32], vrf_signature: [0;80], vrf_pubkey: [0;48] });
+		return Ok(PreDigest{ 
+			slot: 0.into(), 
+			secret: [0;32], 
+			challenge: [0;48],
+			witness: [0;32],
+			pps: ([0;48], [0;48]),
+			// vrf_signature: [0;80], 
+			// vrf_public: [0;48],
+			// ios: [0;32],
+		});
 	}
 
 	let mut pre_digest: Option<PreDigest> = None;
@@ -317,7 +343,7 @@ where
 
 /// Errors in slot and seal verification.
 #[derive(Debug, thiserror::Error)]
-pub enum SealVerificationError<Header> {
+pub enum SealVerificationError<Header> { 
 	/// Header is deferred to the future.
 	#[error("Header slot is in the future")]
 	Deferred(Header, Slot),
@@ -374,37 +400,75 @@ where
 		header.digest_mut().push(seal);
 		return Err(SealVerificationError::Deferred(header, slot))
 	} else {
-		// DRIEMWORKS::TODO 
-		// is this where we would verify the DLEQ proof?
-		let secret = claim.secret; 
-		let pk_buf = claim.vrf_pubkey;
-		let pk = PublicKey::deserialize_compressed(pk_buf.as_ref()).unwrap();
+		// DRIEMWORKS::TODO
+		let secret = claim.secret;
+		if !secret.eq(&[0;32]) {
+			// "B"
+			let r1_bytes = claim.pps.0;
+			let r1: K = K::deserialize_compressed(&r1_bytes[..]).unwrap();
+			// "P"
+			let r2_bytes = claim.pps.1;
+			let r2: K = K::deserialize_compressed(&r2_bytes[..]).unwrap();
+			// "R"
+			let challenge_bytes = claim.challenge;
+			let challenge: K = K::deserialize_compressed(&challenge_bytes[..]).unwrap();
+			// "s"
+			let witness_bytes = claim.witness;
+			let w: Fr = Fr::deserialize_compressed(&witness_bytes[..]).unwrap();
+			
+			let mut t = Transcript::new_labeled(b"etf");
+			t.append(&r1);
+			t.append(&r2);
+			t.append(&challenge);
+			let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
+			let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
 
-		let vrf_sig_buf = claim.vrf_signature;
-		let sig_thin = Signature::deserialize_compressed(vrf_sig_buf.as_ref()).unwrap();
-
-		// sk.as_publickey().serialize_compressed(&mut buf).unwrap();
-		
-		let mut t_0 = Transcript::new_labeled(b"TestFlavor");
-		let mut reader = t_0.challenge(b"Keying&Blinding");
-		let vrf = ThinVrf { keying_base: reader.read_uniform() };
-		let mut sk = SecretKey::ephemeral(vrf.clone());
-
-		let mk_io = |n: Vec<u8>| {
-			let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n).unwrap();
-			sk.vrf_inout(input)
-		};
-		
-		let ios: [vrf::VrfInOut<K>; 3] = [
-			mk_io(slot.to_le_bytes()[..].into()), 
-			mk_io(secret.into()), 
-			mk_io([2;32].into()),
-		];
-		let t = Transcript::new_labeled(b"etf");
-		match vrf.verify_thin_vrf(t, &ios[0..2], &pk, &sig_thin) {
-			Ok(_) => { /* all good */ },
-			Err(e) => panic!("{:?}", e),
+			// calc: R' = sB- cP = w*r1 - c_bytes * r2
+			// check: R = R'?
+			let check: K = ((r1 * w) - (r2 * c)).into();
+			assert!(check.eq(&challenge));
+		} else {
+			log::info!("The secret is empty");
 		}
+		// transcript.append()
+		// TODO: should we also verify this secret?
+		// since it's generated with PSS, we can do that
+		// by checking that f(i) = j where j is my secret share
+		// for that slot and f(x) would be exposed (instead of just the secret)
+		// but does that cause problems in terms of storage space/costs
+		// in the future?
+
+		// let vrf_pk_buf = claim.vrf_public;
+		// let mut vrf_pk = PublicKey::deserialize_compressed(
+		// 	vrf_pk_buf.as_ref()).unwrap();
+		// // let pk = vrf_sk.as_publickey();
+
+		// let vrf_sig_buf = claim.vrf_signature;
+		// let sig_thin = Signature::deserialize_compressed(
+		// 	vrf_sig_buf.as_ref()).unwrap();
+
+		// let mut t_0 = Transcript::new_labeled(b"EtFNetwork");
+		// let mut reader = t_0.challenge(b"Keying&Blinding");
+		// let vrf = ThinVrf { keying_base: reader.read_uniform() };
+		// let mut sk = SecretKey::ephemeral(vrf.clone());
+
+		// rebuild vrf ios?
+		// let mk_io = |n: Vec<u8>| {
+		// 	let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n).unwrap();
+		// 	sk.vrf_inout(input)
+		// };
+		// let ios: [vrf::VrfInOut<K>; 3] = [
+		// 	mk_io(slot.to_le_bytes()[..].into()), 
+		// 	mk_io(secret.into()),
+		// 	mk_io([2;32].into()),
+		// ];
+
+		// this is basically just a schnorr signature..
+		// let t = Transcript::new_labeled(b"etf");
+		// match vrf.verify_thin_vrf(t, &[], &vrf_pk, &sig_thin) {
+		// 	Ok(_) => { /* all good */ },
+		// 	Err(e) => panic!("{:?}", e),
+		// } 
 
 		// check the signature is valid under the expected authority and
 		// chain state.
@@ -425,6 +489,64 @@ where
 mod tests {
 	use super::*;
 	use sp_keyring::sr25519::Keyring;
+
+	#[test]
+	fn tony() {
+		// prover
+		let secret = [3;32];
+		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(secret.as_ref()))
+			.expect("input is padded with zeroes; qed");
+		let mut rng = ChaCha20Rng::from_seed(seed);
+		// both in G1
+		let b = K::rand(&mut rng);
+		let h = K::rand(&mut rng);
+
+		// let mut b_out = Vec::new();
+		// b.serialize_compressed(&mut b_out);
+		// let mut p_out = Vec::new();
+		// h.serialize_compressed(&mut p_out);
+
+		let mut t = Transcript::new_labeled(b"etf");
+		t.append(&b);
+		t.append(&h);
+
+		let mut reader = t.fork(b"secret").chain(secret.clone()).witness(&mut rng);
+		let r: Fr = reader.read_uniform::<Fr>();
+		let commitment: K = (b * r).into();
+		t.append(&commitment);
+		let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
+		let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
+		let x: Fr = Fr::from_be_bytes_mod_order(secret);
+		let s = r + c * x; 
+		let pi = (commitment, s);
+
+
+
+		// "B"
+		// let r1_bytes = claim.pps.0;
+		// let r1: K = K::deserialize_compressed(&r1_bytes[..]).unwrap();
+		// // "P"
+		// let r2_bytes = claim.pps.1;
+		// let r2: K = K::deserialize_compressed(&r2_bytes[..]).unwrap();
+		// // "R"
+		// let challenge_bytes = claim.challenge;
+		// let challenge: K = K::deserialize_compressed(&challenge_bytes[..]).unwrap();
+		// // "s"
+		// let witness_bytes = claim.witness;
+		// let w: Fr = Fr::deserialize_compressed(&witness_bytes[..]).unwrap();
+		
+		let mut t = Transcript::new_labeled(b"etf");
+		t.append(&b);
+		t.append(&h);
+		t.append(&commitment);
+		let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
+		let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
+
+		// calc: R' = sB- cP = w*r1 - c_bytes * r2
+		// check: R = R'?
+		let check: K = ((s * b) - (c * h)).into();
+		assert!(check.eq(&challenge));
+	}
 
 	#[test]
 	fn authorities_call_works() {

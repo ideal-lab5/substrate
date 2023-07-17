@@ -27,16 +27,24 @@ pub type InherentType = Vec<u8>;
 /// Provides the slot secret inherent data for `EtF`.
 /// implements [`InherentDataProvider`]
 #[cfg(feature = "std")]
-pub struct InherentDataProvider(Option<InherentType>);
+pub struct InherentDataProvider {
+	secret: InherentType,
+}
 
 #[cfg(feature = "std")]
 impl InherentDataProvider {
 	/// Create a new instance with the given slot.
-	// pub fn create(secret: InherentType) -> Result<InherentDataProvider, anyhow::Error> {
 	pub fn create(secret: InherentType) -> InherentDataProvider {
-		// Self { secret }
-		// Ok(InherentDataProvider(Some(secret)))
-		InherentDataProvider(Some(secret))
+		InherentDataProvider { secret }
+	}
+}
+
+#[cfg(feature = "std")]
+impl sp_std::ops::Deref for InherentDataProvider {
+	type Target = InherentType;
+
+	fn deref(&self) -> &Self::Target {
+		&self.secret
 	}
 }
 
@@ -47,10 +55,7 @@ impl sp_inherents::InherentDataProvider for InherentDataProvider {
         &self, 
         inherent_data: &mut InherentData
     ) -> Result<(), Error> {
-        if let Some(x) = &self.0 {
-		    inherent_data.put_data(INHERENT_IDENTIFIER, &x)?;
-        };
-        Ok(())
+		inherent_data.put_data(INHERENT_IDENTIFIER, &self.secret)
 	}
 
 	async fn try_handle_error(

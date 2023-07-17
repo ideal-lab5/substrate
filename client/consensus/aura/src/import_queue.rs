@@ -19,7 +19,7 @@
 //! Module implementing the logic for verifying and importing AuRa blocks.
 
 use crate::{
-	authorities, standalone::SealVerificationError, AuthorityId, CompatibilityMode, Error,
+	authorities, find_pre_digest, standalone::SealVerificationError, AuthorityId, CompatibilityMode, Error,
 	LOG_TARGET,
 };
 use codec::{Codec, Decode, Encode};
@@ -145,7 +145,7 @@ where
 	where
 		C: ProvideRuntimeApi<B>,
 		C::Api: BlockBuilderApi<B>,
-		CIDP: CreateInherentDataProviders<B, ()>,
+		CIDP: CreateInherentDataProviders<B, Vec<u8>>,
 	{
 		let inherent_res = self
 			.client
@@ -174,7 +174,7 @@ where
 	P: Pair + Send + Sync + 'static,
 	P::Public: Send + Sync + Hash + Eq + Clone + Decode + Encode + Debug + 'static,
 	P::Signature: Encode + Decode,
-	CIDP: CreateInherentDataProviders<B, ()> + Send + Sync,
+	CIDP: CreateInherentDataProviders<B, Vec<u8>> + Send + Sync,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	async fn verify(
@@ -195,6 +195,9 @@ where
 
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
+		let claim = find_pre_digest::<B, P::Signature>(&block.header)
+			.map_err(|e| format!("Could not fetch predigest at {:?}: {}", parent_hash, e))?;
+		let secret = claim.secret;
 
 		let authorities = authorities(
 			self.client.as_ref(),
@@ -206,7 +209,7 @@ where
 
 		let create_inherent_data_providers = self
 			.create_inherent_data_providers
-			.create_inherent_data_providers(parent_hash, ())
+			.create_inherent_data_providers(parent_hash, secret.into())
 			.await
 			.map_err(|e| Error::<B>::Client(sp_blockchain::Error::Application(e)))?;
 
@@ -377,7 +380,7 @@ where
 	P::Public: Clone + Eq + Send + Sync + Hash + Debug + Encode + Decode,
 	P::Signature: Encode + Decode,
 	S: sp_core::traits::SpawnEssentialNamed,
-	CIDP: CreateInherentDataProviders<Block, ()> + Sync + Send + 'static,
+	CIDP: CreateInherentDataProviders<Block, Vec<u8>> + Sync + Send + 'static,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	let verifier = build_verifier::<P, _, _, _>(BuildVerifierParams {

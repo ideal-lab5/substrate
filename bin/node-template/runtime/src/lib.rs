@@ -525,7 +525,9 @@ impl_runtime_apis! {
 
 		fn secret(context_block_number: u64) -> [u8;32] {
 			let key = context_block_number.to_string();
+			log::info!("Calling secret({:?})", key);
 			match StorageValueRef::persistent(key.as_bytes()).get::<[u8;32]>() {
+			// match StorageValueRef::persistent(b.).get::<[u8;32]>() {
 				Ok(Some(secret)) => secret,
 				_ => [0;32]
 			}

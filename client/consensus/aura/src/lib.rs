@@ -387,13 +387,14 @@ where
 
 	async fn claim_slot(
 		&self,
-		_header: &B::Header,
+		header: &B::Header,
 		slot: Slot,
 		authorities: &Self::AuxData,
 	) -> Option<Self::Claim> {
 		// DRIEMWORKS::TODO: pass the block hash to claim_slot so we can use it when calling the vrf 
-		crate::standalone::claim_slot::<P>(
-			slot, 
+		crate::standalone::claim_slot::<B, P>(
+			slot,
+			header.hash(),
 			&authorities.1, 
 			&authorities.0, 
 			&self.keystore,
