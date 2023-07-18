@@ -239,7 +239,7 @@ impl_opaque_keys! {
 
 parameter_types! {
 	pub const Period: u32 = MINUTES;
-	pub const Offset: u32 = 2;
+	pub const Offset: u32 = 0;
 }
 
 impl pallet_session::Config for Runtime {

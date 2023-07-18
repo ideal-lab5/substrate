@@ -32,6 +32,8 @@ ark-poly = { version = "0.4.0", default-features = false }
 ark-crypto-primitives = { version = "0.4.0", features = [ "r1cs", "snark" ], default-features = false } 
 ark-scale = { git = "https://github.com/w3f/ark-scale", features = ["hazmat"], default-features = false }
 ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+# ark-snark = { version = "0.4.0", default-features = false }
+# ark-groth16 = { version = "0.4.0", features = [ "r1cs" ], default-features = false }
 sp-io = { version = "23.0.0", path = "../../../../primitives/io", default-features = false }
 primitive-types = { version = "0.12.1", default-features = false }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
@@ -82,6 +84,8 @@ std = [
 	"ark-scale/std",
 	"ark-poly/std",
 	"ark-bls12-381/std",
+	# "ark-snark/std",
+	# "ark-groth16/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
 try-runtime = ["frame-support/try-runtime"]

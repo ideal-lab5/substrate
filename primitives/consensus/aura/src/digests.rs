@@ -41,15 +41,8 @@ pub struct PreDigest {
 	pub slot: Slot,
 	/// the slot secret
 	pub secret: [u8;32],
-	pub challenge: [u8;48],
-	pub witness: [u8;32],
-	pub pps: ([u8;48], [u8;48]),
-	// /// VRF signature
-	// pub vrf_signature: [u8;80],
-	// /// VRF secret
-	// pub vrf_public: [u8;48],
-	// /// the vrf ios
-	// pub ios: [[u8;32]; 3],
+	/// dleq proof  of knowledge of slot secret
+	pub proof: ([u8;48], [u8;32])
 }
 
 /// A digest item which is usable with aura consensus.

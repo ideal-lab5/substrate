@@ -54,7 +54,6 @@ use rand_chacha::{
 };
 use ark_ff::{PrimeField, fields::models::fp::Fp};
 use ark_ec::AffineRepr;
-use sha2::digest::Update;
 
 pub use sc_consensus_slots::check_equivocation;
 
@@ -66,7 +65,9 @@ use super::{
 	SlotDuration, 
 	LOG_TARGET,
 };
-use ark_bls12_381::Fr;
+use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
+use ark_ff::BigInteger;
+use ark_bls12_381::{Fr, G2Projective};
 
 type K = ark_bls12_381::G1Affine;
 
@@ -139,43 +140,32 @@ pub async fn claim_slot<B, P: Pair>(
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
-			let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(secret.as_ref()))
+			let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
 				.expect("input is padded with zeroes; qed");
 			let mut rng = ChaCha20Rng::from_seed(seed);
-			let mut transcript = Transcript::new_labeled(b"etf");
-			// both in G1
-			let b = K::rand(&mut rng);
-			let h = K::rand(&mut rng);
-
-			let mut b_out = Vec::new();
-			b.serialize_compressed(&mut b_out);
-			let mut p_out = Vec::new();
-			h.serialize_compressed(&mut p_out);
-
-			let mut t = Transcript::new_labeled(b"etf");
-			t.append(&b);
-			t.append(&h);
-
-			let mut reader = t.fork(b"secret").chain(secret.clone()).witness(&mut rng);
-			let r: Fr = reader.read_uniform::<Fr>();
-			let commitment: K = (b * r).into();
-			t.append(&commitment);
-			let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
-			let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
-			let s = r + c * x; 
-			let mut commitment_out = Vec::new();
-			commitment.serialize_compressed(&mut commitment_out).unwrap();
-
-			let mut s_out = Vec::new();
+			let g: K = K::generator();
+			let r: Fr = Fr::rand(&mut rng);
+			let commitment: K = g.mul(r).into();
+			let mut commitment_bytes= Vec::with_capacity(commitment.compressed_size());
+			commitment.serialize_compressed(&mut commitment_bytes).unwrap();
+			// write commitment bytes to hasher
+			let mut h = sha3::Shake128::default();
+			h.update(commitment_bytes.as_slice());
+			let mut o = [0u8; 32];
+			h.finalize_xof().read(&mut o);
+			let c: Fr = Fr::from_be_bytes_mod_order(&o);
+			let s = r + &(x * c);
+			let mut s_out = Vec::with_capacity(s.compressed_size());
 			s.serialize_compressed(&mut s_out).unwrap();
 
 			let pre_digest = PreDigest {
 				slot: slot, 
 				secret: *secret,
-				challenge: commitment_out.try_into().unwrap(),
-				witness: s_out.try_into().unwrap(), // I don't think the name is correct.. but w/e
-				pps: (b_out.try_into().unwrap(), p_out.try_into().unwrap()),
+				proof: (
+					commitment_bytes.try_into().unwrap(), 
+					s_out.try_into().unwrap(),
+				),
 			};
 			Some((pre_digest.clone(), p.clone()))
 		} else {
@@ -257,9 +247,7 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 		return Ok(PreDigest{ 
 			slot: 0.into(), 
 			secret: [0;32], 
-			challenge: [0;48],
-			witness: [0;32],
-			pps: ([0;48], [0;48]),
+			proof: ([0;48], [0;32]),
 			// vrf_signature: [0;80], 
 			// vrf_public: [0;48],
 			// ios: [0;32],
@@ -401,74 +389,25 @@ where
 		return Err(SealVerificationError::Deferred(header, slot))
 	} else {
 		// DRIEMWORKS::TODO
-		let secret = claim.secret;
-		if !secret.eq(&[0;32]) {
-			// "B"
-			let r1_bytes = claim.pps.0;
-			let r1: K = K::deserialize_compressed(&r1_bytes[..]).unwrap();
-			// "P"
-			let r2_bytes = claim.pps.1;
-			let r2: K = K::deserialize_compressed(&r2_bytes[..]).unwrap();
-			// "R"
-			let challenge_bytes = claim.challenge;
-			let challenge: K = K::deserialize_compressed(&challenge_bytes[..]).unwrap();
-			// "s"
-			let witness_bytes = claim.witness;
-			let w: Fr = Fr::deserialize_compressed(&witness_bytes[..]).unwrap();
-			
-			let mut t = Transcript::new_labeled(b"etf");
-			t.append(&r1);
-			t.append(&r2);
-			t.append(&challenge);
-			let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
-			let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
+		let secret_bytes = claim.secret; // ScalarField
+		let proof_commitment_bytes = claim.proof.0; // K
+		let proof_challenge_bytes = claim.proof.1; // ScalarField
 
-			// calc: R' = sB- cP = w*r1 - c_bytes * r2
-			// check: R = R'?
-			let check: K = ((r1 * w) - (r2 * c)).into();
-			assert!(check.eq(&challenge));
-		} else {
-			log::info!("The secret is empty");
-		}
-		// transcript.append()
-		// TODO: should we also verify this secret?
-		// since it's generated with PSS, we can do that
-		// by checking that f(i) = j where j is my secret share
-		// for that slot and f(x) would be exposed (instead of just the secret)
-		// but does that cause problems in terms of storage space/costs
-		// in the future?
+		let commitment: K = K::deserialize_compressed(&proof_commitment_bytes[..]).unwrap();
+		let s: Fr = Fr::deserialize_compressed(&proof_challenge_bytes[..]).unwrap();
 
-		// let vrf_pk_buf = claim.vrf_public;
-		// let mut vrf_pk = PublicKey::deserialize_compressed(
-		// 	vrf_pk_buf.as_ref()).unwrap();
-		// // let pk = vrf_sk.as_publickey();
+		let mut h = sha3::Shake128::default();
+        h.update(proof_commitment_bytes.as_slice());
+		let mut o = [0u8; 32];
+		// get challenge from hashers
+        h.finalize_xof().read(&mut o);
+		let c: Fr = Fr::from_be_bytes_mod_order(&o);
 
-		// let vrf_sig_buf = claim.vrf_signature;
-		// let sig_thin = Signature::deserialize_compressed(
-		// 	vrf_sig_buf.as_ref()).unwrap();
-
-		// let mut t_0 = Transcript::new_labeled(b"EtFNetwork");
-		// let mut reader = t_0.challenge(b"Keying&Blinding");
-		// let vrf = ThinVrf { keying_base: reader.read_uniform() };
-		// let mut sk = SecretKey::ephemeral(vrf.clone());
-
-		// rebuild vrf ios?
-		// let mk_io = |n: Vec<u8>| {
-		// 	let input = vrf::ark_hash_to_curve::<K,H2C>(b"VrfIO", &n).unwrap();
-		// 	sk.vrf_inout(input)
-		// };
-		// let ios: [vrf::VrfInOut<K>; 3] = [
-		// 	mk_io(slot.to_le_bytes()[..].into()), 
-		// 	mk_io(secret.into()),
-		// 	mk_io([2;32].into()),
-		// ];
-
-		// this is basically just a schnorr signature..
-		// let t = Transcript::new_labeled(b"etf");
-		// match vrf.verify_thin_vrf(t, &[], &vrf_pk, &sig_thin) {
-		// 	Ok(_) => { /* all good */ },
-		// 	Err(e) => panic!("{:?}", e),
-		// } 
+		let g: K = K::generator();
+		let x: Fr = Fr::from_be_bytes_mod_order(&secret_bytes);
+		let r: K = g.mul(x).into();
+		let p: K = (g.mul(s) - r.mul(c)).into();
+		assert!(p.eq(&commitment));
 
 		// check the signature is valid under the expected authority and
 		// chain state.
@@ -490,62 +429,42 @@ mod tests {
 	use super::*;
 	use sp_keyring::sr25519::Keyring;
 
+	use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
+	use ark_ff::BigInteger;
+	use ark_ec::{pairing::Pairing, CurveConfig, Group};
+
 	#[test]
 	fn tony() {
-		// prover
-		let secret = [3;32];
-		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(secret.as_ref()))
+		// PROVER
+		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
 			.expect("input is padded with zeroes; qed");
 		let mut rng = ChaCha20Rng::from_seed(seed);
-		// both in G1
-		let b = K::rand(&mut rng);
-		let h = K::rand(&mut rng);
+		// the 'secret'
+		let x: Fr = Fr::rand(&mut rng);
+		// choose a random generator P
+		let G: K = K::generator();
+		// sample random point in the scalar field
+		let r: Fr = Fr::rand(&mut rng);
+		// create a commitment
+		let R: K = G.mul(r).into();
+		// convert commitment to bytes
+        let mut  R_Bytes= Vec::with_capacity(R.compressed_size());
+        R.serialize_compressed(&mut R_Bytes).unwrap();
+		// write commitment bytes to hasher
+        let mut h = sha3::Shake128::default();
+        h.update(R_Bytes.as_slice());
+		let mut o = [0u8; 32];
+		// get challenge from hashers
+        h.finalize_xof().read(&mut o);
+		let c: Fr = Fr::from_be_bytes_mod_order(&o);
+		// calculate s 
+		let s = r + &(x * c);
+		// POK = (R, s)
 
-		// let mut b_out = Vec::new();
-		// b.serialize_compressed(&mut b_out);
-		// let mut p_out = Vec::new();
-		// h.serialize_compressed(&mut p_out);
-
-		let mut t = Transcript::new_labeled(b"etf");
-		t.append(&b);
-		t.append(&h);
-
-		let mut reader = t.fork(b"secret").chain(secret.clone()).witness(&mut rng);
-		let r: Fr = reader.read_uniform::<Fr>();
-		let commitment: K = (b * r).into();
-		t.append(&commitment);
-		let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
-		let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
-		let x: Fr = Fr::from_be_bytes_mod_order(secret);
-		let s = r + c * x; 
-		let pi = (commitment, s);
-
-
-
-		// "B"
-		// let r1_bytes = claim.pps.0;
-		// let r1: K = K::deserialize_compressed(&r1_bytes[..]).unwrap();
-		// // "P"
-		// let r2_bytes = claim.pps.1;
-		// let r2: K = K::deserialize_compressed(&r2_bytes[..]).unwrap();
-		// // "R"
-		// let challenge_bytes = claim.challenge;
-		// let challenge: K = K::deserialize_compressed(&challenge_bytes[..]).unwrap();
-		// // "s"
-		// let witness_bytes = claim.witness;
-		// let w: Fr = Fr::deserialize_compressed(&witness_bytes[..]).unwrap();
-		
-		let mut t = Transcript::new_labeled(b"etf");
-		t.append(&b);
-		t.append(&h);
-		t.append(&commitment);
-		let c_bytes: [u8; 32] = t.challenge(b"challenge").read_byte_array();
-		let c: Fr = Fr::from_be_bytes_mod_order(&c_bytes);
-
-		// calc: R' = sB- cP = w*r1 - c_bytes * r2
-		// check: R = R'?
-		let check: K = ((s * b) - (c * h)).into();
-		assert!(check.eq(&challenge));
+		// VERIFIER
+		let R_v: K = G.mul(x).into();
+		let P: K = (G.mul(s) - R_v.mul(c)).into();
+		assert!(P == R);
 	}
 
 	#[test]
