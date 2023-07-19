@@ -85,8 +85,8 @@ where
 		let digest_item = <DigestItem as CompatibleDigestItem<AuthoritySignature>>::aura_pre_digest(
 			sp_consensus_aura::digests::PreDigest{ 
 				slot: Slot::from_timestamp(timestamp, self.slot_duration), 
-				secret: [0;32], 
-				proof: ([0;48], [0;32]),
+				secret: [0;48], 
+				proof: ([0;48], [0;48], [0;32], [0;48]),
 				// vrf_signature: [0;80],
 				// vrf_public: [0;48],
 				// ios: [0;32],

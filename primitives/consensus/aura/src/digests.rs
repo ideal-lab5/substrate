@@ -40,9 +40,14 @@ pub struct PreDigest {
 	/// Slot
 	pub slot: Slot,
 	/// the slot secret
-	pub secret: [u8;32],
+	pub secret: [u8;48],
 	/// dleq proof  of knowledge of slot secret
-	pub proof: ([u8;48], [u8;32])
+	pub proof: (
+		[u8;48],// commitment_1 
+		[u8;48],// commitment_2
+		[u8;32],// witness
+		[u8;48],// "pk" "out"
+	)
 }
 
 /// A digest item which is usable with aura consensus.

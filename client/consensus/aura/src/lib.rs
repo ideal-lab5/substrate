@@ -277,7 +277,7 @@ pub fn build_aura_worker<P, B, C, PF, I, SO, L, BS, Error>(
 	SyncOracle = SO,
 	JustificationSyncLink = L,
 	Claim = (PreDigest, P::Public),
-	AuxData = (Vec<AuthorityId<P>>, [u8;32]),
+	AuxData = (Vec<AuthorityId<P>>, [u8;32], [u8;48]),
 >
 where
 	B: BlockT,
@@ -352,8 +352,7 @@ where
 		Pin<Box<dyn Future<Output = Result<E::Proposer, ConsensusError>> + Send + 'static>>;
 	type Proposer = E::Proposer;
 	type Claim = (PreDigest, P::Public);
-	// type AuxData = Vec<AuthorityId<P>>;
-	type AuxData = (Vec<AuthorityId<P>>, [u8;32]);
+	type AuxData = (Vec<AuthorityId<P>>, [u8;32], [u8;48]);
 
 	fn logging_target(&self) -> &'static str {
 		"aura"
@@ -378,7 +377,8 @@ where
 			*header.number() + 1u32.into(),
 			&self.compatibility_mode,
 		)?;
-		Ok((authorities, secret))
+		// TODO: get pubkey 
+		Ok((authorities, secret, [1;48]))
 	}
 
 	fn authorities_len(&self, authorities: &Self::AuxData) -> Option<usize> {
@@ -389,14 +389,14 @@ where
 		&self,
 		header: &B::Header,
 		slot: Slot,
-		authorities: &Self::AuxData,
+		aux: &Self::AuxData,
 	) -> Option<Self::Claim> {
-		// DRIEMWORKS::TODO: pass the block hash to claim_slot so we can use it when calling the vrf 
 		crate::standalone::claim_slot::<B, P>(
 			slot,
 			header.hash(),
-			&authorities.1, 
-			&authorities.0, 
+			&aux.0, //authorities
+			&aux.1, // secret
+			&aux.2, // pubkey
 			&self.keystore,
 		).await
 	}
@@ -612,6 +612,10 @@ where
 	runtime_api
 		.secret(parent_hash, n).ok()
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
+}
+
+fn identity() {
+	todo!();
 }
 
 // #[cfg(test)]

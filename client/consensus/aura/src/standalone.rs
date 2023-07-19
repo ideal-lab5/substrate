@@ -65,6 +65,7 @@ use super::{
 	SlotDuration, 
 	LOG_TARGET,
 };
+use sha2::Digest;
 use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
 use ark_ff::BigInteger;
 use ark_bls12_381::{Fr, G2Projective};
@@ -129,8 +130,9 @@ pub fn slot_author<P: Pair>(slot: Slot, authorities: &[AuthorityId<P>]) -> Optio
 pub async fn claim_slot<B, P: Pair>(
 	slot: Slot,
 	block_hash: B::Hash,
-	secret: &[u8;32],
 	authorities: &[AuthorityId<P>],
+	secret: &[u8;32],
+	pk_bytes: &[u8;48], // H-to-g1(ID)
 	keystore: &KeystorePtr,
 ) -> Option<(PreDigest, P::Public)> 
 	where B: BlockT {
@@ -140,31 +142,30 @@ pub async fn claim_slot<B, P: Pair>(
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
+			// TODO should probably be passed as a param
+			let mut id = p.to_raw_vec();
+			let s = u64::from(slot);
+			id.append(&mut s.to_string().as_bytes().to_vec());
+			let pk = hash_to_g1(&id);
+			// derive the slot secret: d = xQ
 			let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
 				.expect("input is padded with zeroes; qed");
 			let mut rng = ChaCha20Rng::from_seed(seed);
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
-			let g: K = K::generator();
-			let r: Fr = Fr::rand(&mut rng);
-			let commitment: K = g.mul(r).into();
-			let mut commitment_bytes= Vec::with_capacity(commitment.compressed_size());
-			commitment.serialize_compressed(&mut commitment_bytes).unwrap();
-			// write commitment bytes to hasher
-			let mut h = sha3::Shake128::default();
-			h.update(commitment_bytes.as_slice());
-			let mut o = [0u8; 32];
-			h.finalize_xof().read(&mut o);
-			let c: Fr = Fr::from_be_bytes_mod_order(&o);
-			let s = r + &(x * c);
-			let mut s_out = Vec::with_capacity(s.compressed_size());
-			s.serialize_compressed(&mut s_out).unwrap();
+			// let pk: K = convert_from_bytes::<K, 48>(pk_bytes).unwrap();
+			// the (to be exposed) slot secret
+			let d: K = pk.mul(x).into();
+			let proof = prepare_proof(x, d, pk);
+			// serialize proof
 
 			let pre_digest = PreDigest {
 				slot: slot, 
-				secret: *secret,
+				secret: convert_to_bytes::<K, 48>(d).try_into().unwrap(),
 				proof: (
-					commitment_bytes.try_into().unwrap(), 
-					s_out.try_into().unwrap(),
+					convert_to_bytes::<K, 48>(proof.commitment_1).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(proof.commitment_2).try_into().unwrap(),
+					convert_to_bytes::<Fr, 32>(proof.witness).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(proof.out).try_into().unwrap(),
 				),
 			};
 			Some((pre_digest.clone(), p.clone()))
@@ -175,6 +176,109 @@ pub async fn claim_slot<B, P: Pair>(
 	
 	public
 }
+
+// TODO: proper error handling
+fn convert_from_bytes<E: CanonicalDeserialize, const N: usize>(bytes: &[u8; N]) -> Option<E> {
+	let k: E = E::deserialize_compressed(&bytes[..]).unwrap();
+	Some(k)
+}
+
+// should it be an error instead?
+fn convert_to_bytes<E: CanonicalSerialize, const N: usize>(k: E) -> [u8;N] {
+	let mut out = Vec::with_capacity(k.compressed_size());
+	k.serialize_compressed(&mut out).unwrap_or(());
+	let o: [u8; N] = out.try_into().unwrap_or([0;N]);
+	o
+}
+
+fn hash_to_g1(b: &[u8]) -> K {
+    let mut nonce = 0u32;
+    loop {
+        let c = [b, &nonce.to_be_bytes()].concat();
+        match K::from_random_bytes(&sha256(&c)) {
+            Some(v) => {
+                // if v.is_in_correct_subgroup_assuming_on_curve() { return v.into(); }
+                return v.mul_by_cofactor_to_group().into();
+            }
+            None => nonce += 1,
+        }
+    }
+}
+
+fn sha256(b: &[u8]) -> Vec<u8> {
+    let mut hasher = sha2::Sha256::new();
+	sha2::Digest::update(&mut hasher, b);
+    // hasher.update(b);
+    hasher.finalize().to_vec()
+}
+
+// TODO: serialization??
+/// a struct to hold a DLEQ proof
+pub struct Proof<K, S> {
+	/// the first commitment point rG
+    pub commitment_1: K,
+	///  the second commitment point rH
+    pub commitment_2: K,
+	/// the witness s = r + c*x
+    pub witness: S,
+	/// secret * G (can probably remove...)
+    pub out: K,
+}
+
+/// Prepare a DLEQ proof of knowledge of the value 'x'
+/// 
+/// * `x`: The secret (scalar)
+///
+pub fn prepare_proof(x: Fr, d: K, q: K) -> Proof<K, Fr> {
+    let mut rng = ChaCha20Rng::from_seed([2;32]);
+    let r: Fr = Fr::rand(&mut rng);
+    let commitment_1: K = K::generator().mul(r).into();
+    let commitment_2: K = q.mul(r).into();
+    let pk: K = K::generator().mul(x).into();
+    let c: Fr = prepare_witness(vec![commitment_1, commitment_2, pk, d]);
+    let s = r + x * c;
+    Proof {
+        commitment_1, 
+        commitment_2, 
+        witness: s, 
+        out: pk
+    }
+}
+
+/// verify the proof was generated on the given input
+/// 
+/// * `q`: The group element such that d = xq for the secret q
+/// * `d`: The 'secret'
+/// * `proof`: The DLEQ proof to verify 
+/// 
+fn verify_proof(q: K , d: K, proof: Proof<K, Fr>) -> bool {
+    let c = prepare_witness(vec![proof.commitment_1, proof.commitment_2, proof.out, d]);
+    let check_x: K = (proof.out.mul(c) - K::generator().mul(proof.witness)).into();
+    let check_y: K = (d.mul(c) - q.mul(proof.witness)).into();
+
+    check_x.x.eq(&proof.commitment_1.x) &&
+        check_y.x.eq(&proof.commitment_2.x)
+}
+
+/// Prepare a witness for the proof using Shake128
+/// 
+/// `p`: A point in the group G1 
+/// 
+fn prepare_witness(points: Vec<K>) -> Fr {
+    let mut h = sha3::Shake128::default();
+
+    for p in points.iter() {
+        let mut bytes = Vec::with_capacity(p.compressed_size());
+        p.serialize_compressed(&mut bytes).unwrap();
+        h.update(bytes.as_slice());
+    }
+    
+    let mut o = [0u8; 32];
+    // get challenge from hasher
+    h.finalize_xof().read(&mut o);
+    Fr::from_be_bytes_mod_order(&o)
+}
+
 
 /// Produce the pre-runtime digest containing the slot info and slot secret.
 ///
@@ -246,8 +350,8 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	if header.number().is_zero() {
 		return Ok(PreDigest{ 
 			slot: 0.into(), 
-			secret: [0;32], 
-			proof: ([0;48], [0;32]),
+			secret: [0;48], 
+			proof: ([0;48], [0;48], [0;32], [0;48]),
 			// vrf_signature: [0;80], 
 			// vrf_public: [0;48],
 			// ios: [0;32],
@@ -388,31 +492,47 @@ where
 		header.digest_mut().push(seal);
 		return Err(SealVerificationError::Deferred(header, slot))
 	} else {
+		let expected_author =
+			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
+		let mut id = expected_author.to_raw_vec();
+		let s = u64::from(slot);
+		id.append(&mut s.to_string().as_bytes().to_vec());
+		let pk = hash_to_g1(&id);
+		let secret_bytes = claim.secret;
+		// TODO: error handling
+		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
+		let p = claim.proof;
+		let proof = Proof {
+			commitment_1: convert_from_bytes::<K, 48>(&p.0).unwrap(),
+			commitment_2: convert_from_bytes::<K, 48>(&p.1).unwrap(),
+			witness: convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
+			out: convert_from_bytes::<K, 48>(&p.3).unwrap(),
+		};
+		let validity = verify_proof(pk, d, proof);
+		assert!(validity);
 		// DRIEMWORKS::TODO
-		let secret_bytes = claim.secret; // ScalarField
-		let proof_commitment_bytes = claim.proof.0; // K
-		let proof_challenge_bytes = claim.proof.1; // ScalarField
+		// let proof_commitment_bytes = claim.proof.0; // K
+		// let proof_challenge_bytes = claim.proof.1; // ScalarField
+		// let commitment: K = K::deserialize_compressed(&proof_commitment_bytes[..]).unwrap();
+		// let s: Fr = Fr::deserialize_compressed(&proof_challenge_bytes[..]).unwrap();
 
-		let commitment: K = K::deserialize_compressed(&proof_commitment_bytes[..]).unwrap();
-		let s: Fr = Fr::deserialize_compressed(&proof_challenge_bytes[..]).unwrap();
+		// let mut h = sha3::Shake128::default();
+        // h.update(proof_commitment_bytes.as_slice());
+		// let mut o = [0u8; 32];
+		// // get challenge from hashers
+        // h.finalize_xof().read(&mut o);
+		// let c: Fr = Fr::from_be_bytes_mod_order(&o);
 
-		let mut h = sha3::Shake128::default();
-        h.update(proof_commitment_bytes.as_slice());
-		let mut o = [0u8; 32];
-		// get challenge from hashers
-        h.finalize_xof().read(&mut o);
-		let c: Fr = Fr::from_be_bytes_mod_order(&o);
-
-		let g: K = K::generator();
-		let x: Fr = Fr::from_be_bytes_mod_order(&secret_bytes);
-		let r: K = g.mul(x).into();
-		let p: K = (g.mul(s) - r.mul(c)).into();
-		assert!(p.eq(&commitment));
+		// let g: K = K::generator();
+		// let x: Fr = Fr::from_be_bytes_mod_order(&secret_bytes);
+		// let r: K = g.mul(x).into();
+		// let p: K = (g.mul(s) - r.mul(c)).into();
+		// assert!(p.eq(&commitment));
+		// let is_valid = verify_proof();
 
 		// check the signature is valid under the expected authority and
 		// chain state.
-		let expected_author =
-			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
+
 
 		let pre_hash = header.hash();
 
