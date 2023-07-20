@@ -114,11 +114,15 @@ pub fn new_partial(
 					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 						*timestamp,
 						slot_duration,
+						s.clone().try_into().unwrap_or([0;32]),
 					);
 
-				let secret = sp_consensus_etf::InherentDataProvider::create(s);
-
-				Ok((slot, secret, timestamp))
+				// let secret = 
+				// 	sp_consensus_etf::InherentDataProvider::new(
+				// 		s.clone().try_into().unwrap_or([0;32])
+				// 	);
+				
+				Ok((slot, timestamp))
 			},
 			spawner: &task_manager.spawn_essential_handle(),
 			registry: config.prometheus_registry(),

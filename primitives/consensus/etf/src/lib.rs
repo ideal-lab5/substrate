@@ -22,7 +22,7 @@ use codec::Encode;
 pub const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
 
 /// the type of the inherent
-pub type InherentType = Vec<u8>;
+pub type InherentType = [u8;32];
 
 /// Provides the slot secret inherent data for `EtF`.
 /// implements [`InherentDataProvider`]
@@ -31,11 +31,33 @@ pub struct InherentDataProvider {
 	secret: InherentType,
 }
 
+/// Auxiliary trait to extract etf inherent data.
+pub trait EtfInherentData {
+	/// Get secret inherent data.
+	fn etf_inherent_data(&self) -> Result<Option<InherentType>, sp_inherents::Error>;
+	fn etf_replace_inherent_data(&mut self, new: InherentType);
+}
+
+impl EtfInherentData for InherentData {
+	fn etf_inherent_data(&self) -> Result<Option<InherentType>, sp_inherents::Error> {
+		self.get_data(&INHERENT_IDENTIFIER)
+	}
+	fn etf_replace_inherent_data(&mut self, new: InherentType) {
+		self.replace_data(INHERENT_IDENTIFIER, &new);
+	}
+}
+
+
 #[cfg(feature = "std")]
 impl InherentDataProvider {
 	/// Create a new instance with the given slot.
-	pub fn create(secret: InherentType) -> InherentDataProvider {
-		InherentDataProvider { secret }
+	pub fn new(secret: InherentType) -> InherentDataProvider {
+		Self { secret }
+	}
+
+	/// returns the secret of this inherent data provider
+	pub fn secret(&self) -> InherentType {
+		self.secret
 	}
 }
 

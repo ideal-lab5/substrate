@@ -198,7 +198,7 @@ where
 		let claim = find_pre_digest::<B, P::Signature>(&block.header)
 			.map_err(|e| format!("Could not fetch predigest at {:?}: {}", parent_hash, e))?;
 		let secret = claim.secret;
-
+		log::info!("IMPORT QUEUE SECRET: {:?}", secret);
 		let authorities = authorities(
 			self.client.as_ref(),
 			parent_hash,
@@ -228,7 +228,6 @@ where
 		let checked_header = check_header::<C, B, P>(
 			&self.client,
 			slot_now + 1,
-			// secret,
 			block.header,
 			hash,
 			&authorities[..],
@@ -244,7 +243,7 @@ where
 					let new_block = B::new(pre_header.clone(), inner_body);
 
 					inherent_data.aura_replace_inherent_data(slot);
-
+					// inherent_data.etf_replace_inherent_data([2;32]);
 					// skip the inherents verification if the runtime API is old or not expected to
 					// exist.
 					if self

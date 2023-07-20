@@ -136,9 +136,6 @@ pub async fn claim_slot<B, P: Pair>(
 	keystore: &KeystorePtr,
 ) -> Option<(PreDigest, P::Public)> 
 	where B: BlockT {
-	// DRIEMWORKS::TODO should I replace this with expected_identity?
-	// let expected_author = Hash-to-G1(identity::<P>(slot, authorities));
-	// what if, when claiming the slot they decrypt
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
@@ -147,25 +144,25 @@ pub async fn claim_slot<B, P: Pair>(
 			let s = u64::from(slot);
 			id.append(&mut s.to_string().as_bytes().to_vec());
 			let pk = hash_to_g1(&id);
-			// derive the slot secret: d = xQ
 			let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
 				.expect("input is padded with zeroes; qed");
 			let mut rng = ChaCha20Rng::from_seed(seed);
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
-			// let pk: K = convert_from_bytes::<K, 48>(pk_bytes).unwrap();
 			// the (to be exposed) slot secret
 			let d: K = pk.mul(x).into();
 			let proof = prepare_proof(x, d, pk);
-			// serialize proof
-
 			let pre_digest = PreDigest {
 				slot: slot, 
 				secret: convert_to_bytes::<K, 48>(d).try_into().unwrap(),
 				proof: (
-					convert_to_bytes::<K, 48>(proof.commitment_1).try_into().unwrap(),
-					convert_to_bytes::<K, 48>(proof.commitment_2).try_into().unwrap(),
-					convert_to_bytes::<Fr, 32>(proof.witness).try_into().unwrap(),
-					convert_to_bytes::<K, 48>(proof.out).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(
+						proof.commitment_1).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(
+						proof.commitment_2).try_into().unwrap(),
+					convert_to_bytes::<Fr, 32>(
+						proof.witness).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(
+						proof.out).try_into().unwrap(),
 				),
 			};
 			Some((pre_digest.clone(), p.clone()))
@@ -485,6 +482,7 @@ where
 
 	let claim = find_pre_digest::<B, P::Signature>(&header)
 		.map_err(SealVerificationError::InvalidPreDigest)?;
+
 	let slot = claim.slot;
 
 	// the slot cannot be in the future
@@ -497,43 +495,27 @@ where
 		let mut id = expected_author.to_raw_vec();
 		let s = u64::from(slot);
 		id.append(&mut s.to_string().as_bytes().to_vec());
+		// the expected public key associated with the slot
 		let pk = hash_to_g1(&id);
 		let secret_bytes = claim.secret;
 		// TODO: error handling
 		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
 		let p = claim.proof;
 		let proof = Proof {
-			commitment_1: convert_from_bytes::<K, 48>(&p.0).unwrap(),
-			commitment_2: convert_from_bytes::<K, 48>(&p.1).unwrap(),
-			witness: convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
-			out: convert_from_bytes::<K, 48>(&p.3).unwrap(),
+			commitment_1: 
+				convert_from_bytes::<K, 48>(&p.0).unwrap(),
+			commitment_2: 
+				convert_from_bytes::<K, 48>(&p.1).unwrap(),
+			witness: 
+				convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
+			out: 
+				convert_from_bytes::<K, 48>(&p.3).unwrap(),
 		};
-		let validity = verify_proof(pk, d, proof);
-		assert!(validity);
-		// DRIEMWORKS::TODO
-		// let proof_commitment_bytes = claim.proof.0; // K
-		// let proof_challenge_bytes = claim.proof.1; // ScalarField
-		// let commitment: K = K::deserialize_compressed(&proof_commitment_bytes[..]).unwrap();
-		// let s: Fr = Fr::deserialize_compressed(&proof_challenge_bytes[..]).unwrap();
-
-		// let mut h = sha3::Shake128::default();
-        // h.update(proof_commitment_bytes.as_slice());
-		// let mut o = [0u8; 32];
-		// // get challenge from hashers
-        // h.finalize_xof().read(&mut o);
-		// let c: Fr = Fr::from_be_bytes_mod_order(&o);
-
-		// let g: K = K::generator();
-		// let x: Fr = Fr::from_be_bytes_mod_order(&secret_bytes);
-		// let r: K = g.mul(x).into();
-		// let p: K = (g.mul(s) - r.mul(c)).into();
-		// assert!(p.eq(&commitment));
-		// let is_valid = verify_proof();
-
+		let is_valid = verify_proof(pk, d, proof);
+		// TODO: create error type
+		assert!(is_valid);
 		// check the signature is valid under the expected authority and
 		// chain state.
-
-
 		let pre_hash = header.hash();
 
 		if P::verify(&sig, pre_hash.as_ref(), expected_author) {

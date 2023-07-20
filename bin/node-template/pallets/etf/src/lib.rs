@@ -272,10 +272,6 @@ pub mod pallet {
 		}
 	}
 
-	// DRIEMWORKS::TODO: REMOVE THIS?
-	 /// The identifier for the parachain consensus update inherent.
-	 pub const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
-
 	 #[pallet::inherent]
 	 impl<T: Config> ProvideInherent for Pallet<T>
 	 where
@@ -283,16 +279,23 @@ pub mod pallet {
 	 {
 		 type Call = Call<T>;
 		 type Error = sp_inherents::MakeFatalError<()>;
-		 const INHERENT_IDENTIFIER: InherentIdentifier = INHERENT_IDENTIFIER;
+		 const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
  
 		 fn create_inherent(data: &InherentData) -> Option<Self::Call> {
 			log::info!("Calling the inherent");
-			let slot: Slot = data.get_data(b"auraslot").ok().flatten()?;
-			log::info!("Found slot: {:?}", slot);
-			let secret: Vec<u8> =
-				data.get_data(&Self::INHERENT_IDENTIFIER).ok().flatten()?;
-			log::info!("found secret: {:?}", secret);
-			Some(Call::reveal_slot_secret { slot, secret })
+			match data.get_data(&Self::INHERENT_IDENTIFIER) {
+				Ok(secret) => {
+					let s = secret.unwrap_or(Vec::new());
+					log::info!("found secret: {:?}", s.clone());
+					let slot: Slot = data.get_data(b"auraslot").ok().flatten()?;
+					log::info!("Found slot: {:?}", slot);
+					Some(Call::reveal_slot_secret { slot, secret: s })
+				},
+				Err(e) => {
+					panic!("{:?}", e);
+				}
+			}
+			
 		 }
  
 		 fn is_inherent(call: &Self::Call) -> bool {
