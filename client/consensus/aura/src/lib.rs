@@ -277,7 +277,7 @@ pub fn build_aura_worker<P, B, C, PF, I, SO, L, BS, Error>(
 	SyncOracle = SO,
 	JustificationSyncLink = L,
 	Claim = (PreDigest, P::Public),
-	AuxData = (Vec<AuthorityId<P>>, [u8;32], [u8;48]),
+	AuxData = (Vec<AuthorityId<P>>, [u8;32]),
 >
 where
 	B: BlockT,
@@ -352,7 +352,7 @@ where
 		Pin<Box<dyn Future<Output = Result<E::Proposer, ConsensusError>> + Send + 'static>>;
 	type Proposer = E::Proposer;
 	type Claim = (PreDigest, P::Public);
-	type AuxData = (Vec<AuthorityId<P>>, [u8;32], [u8;48]);
+	type AuxData = (Vec<AuthorityId<P>>, [u8;32]);
 
 	fn logging_target(&self) -> &'static str {
 		"aura"
@@ -378,7 +378,7 @@ where
 			&self.compatibility_mode,
 		)?;
 		// TODO: get pubkey 
-		Ok((authorities, secret, [1;48]))
+		Ok((authorities, secret))
 	}
 
 	fn authorities_len(&self, authorities: &Self::AuxData) -> Option<usize> {
@@ -396,7 +396,6 @@ where
 			header.hash(),
 			&aux.0, //authorities
 			&aux.1, // secret
-			&aux.2, // pubkey
 			&self.keystore,
 		).await
 	}
@@ -413,7 +412,7 @@ where
 		body: Vec<B::Extrinsic>,
 		storage_changes: StorageChanges<<Self::BlockImport as BlockImport<B>>::Transaction, B>,
 		(_, public): Self::Claim,
-		aux: Self::AuxData,
+		_: Self::AuxData,
 	) -> Result<
 		sc_consensus::BlockImportParams<B, <Self::BlockImport as BlockImport<B>>::Transaction>,
 		ConsensusError,
@@ -606,11 +605,9 @@ where
 					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
 			},
 	}
-	// DRIEMWORKS::TODO : Add new error
-	// let n: u64 = u64::try_from(context_block_number.into()).unwrap();
-	let n = TryInto::<u64>::try_into(context_block_number).ok().unwrap();
+	// DRIEMWORKS::TODO : Add new error type
 	runtime_api
-		.secret(parent_hash, n).ok()
+		.secret(parent_hash).ok()
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 

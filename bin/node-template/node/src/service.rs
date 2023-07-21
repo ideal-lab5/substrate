@@ -107,20 +107,14 @@ pub fn new_partial(
 			block_import: grandpa_block_import.clone(),
 			justification_import: Some(Box::new(grandpa_block_import.clone())),
 			client: client.clone(),
-			create_inherent_data_providers: move |_, s: Vec<u8>| async move {
+			create_inherent_data_providers: move |_, ()| async move {
 				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 				let slot =
 					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 						*timestamp,
 						slot_duration,
-						s.clone().try_into().unwrap_or([0;32]),
 					);
-
-				// let secret = 
-				// 	sp_consensus_etf::InherentDataProvider::new(
-				// 		s.clone().try_into().unwrap_or([0;32])
-				// 	);
 				
 				Ok((slot, timestamp))
 			},
@@ -247,6 +241,9 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 				create_inherent_data_providers: move |_, ()| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
+					// Q: we *could* calculate the slot secret here pretty easily
+					// and then pass it as inherent data
+					// d_slot = sQ_slot
 					let slot =
 						sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 							*timestamp,

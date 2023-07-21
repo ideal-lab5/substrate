@@ -132,7 +132,6 @@ pub async fn claim_slot<B, P: Pair>(
 	block_hash: B::Hash,
 	authorities: &[AuthorityId<P>],
 	secret: &[u8;32],
-	pk_bytes: &[u8;48], // H-to-g1(ID)
 	keystore: &KeystorePtr,
 ) -> Option<(PreDigest, P::Public)> 
 	where B: BlockT {
@@ -347,11 +346,8 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	if header.number().is_zero() {
 		return Ok(PreDigest{ 
 			slot: 0.into(), 
-			secret: [0;48], 
+			secret: [0;48],
 			proof: ([0;48], [0;48], [0;32], [0;48]),
-			// vrf_signature: [0;80], 
-			// vrf_public: [0;48],
-			// ios: [0;32],
 		});
 	}
 
@@ -430,6 +426,19 @@ where
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 
+// pub fn fetch_slot_id<A, B, C>(
+// 	client: &C,
+// 	parent_hash: B::Hash,
+// 	slot: Slot,
+// ) -> Result<Vec<A>, ConsensusError> {
+// 	// Driemworks::TODO new error type
+// 	client
+// 		.runtime_api()
+// 		.identity(parent_hash, slot)
+// 		.ok() 
+// 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
+// }
+
 /// Errors in slot and seal verification.
 #[derive(Debug, thiserror::Error)]
 pub enum SealVerificationError<Header> { 
@@ -502,14 +511,10 @@ where
 		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
 		let p = claim.proof;
 		let proof = Proof {
-			commitment_1: 
-				convert_from_bytes::<K, 48>(&p.0).unwrap(),
-			commitment_2: 
-				convert_from_bytes::<K, 48>(&p.1).unwrap(),
-			witness: 
-				convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
-			out: 
-				convert_from_bytes::<K, 48>(&p.3).unwrap(),
+			commitment_1: convert_from_bytes::<K, 48>(&p.0).unwrap(),
+			commitment_2: convert_from_bytes::<K, 48>(&p.1).unwrap(),
+			witness: convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
+			out: convert_from_bytes::<K, 48>(&p.3).unwrap(),
 		};
 		let is_valid = verify_proof(pk, d, proof);
 		// TODO: create error type
@@ -534,40 +539,6 @@ mod tests {
 	use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
 	use ark_ff::BigInteger;
 	use ark_ec::{pairing::Pairing, CurveConfig, Group};
-
-	#[test]
-	fn tony() {
-		// PROVER
-		let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
-			.expect("input is padded with zeroes; qed");
-		let mut rng = ChaCha20Rng::from_seed(seed);
-		// the 'secret'
-		let x: Fr = Fr::rand(&mut rng);
-		// choose a random generator P
-		let G: K = K::generator();
-		// sample random point in the scalar field
-		let r: Fr = Fr::rand(&mut rng);
-		// create a commitment
-		let R: K = G.mul(r).into();
-		// convert commitment to bytes
-        let mut  R_Bytes= Vec::with_capacity(R.compressed_size());
-        R.serialize_compressed(&mut R_Bytes).unwrap();
-		// write commitment bytes to hasher
-        let mut h = sha3::Shake128::default();
-        h.update(R_Bytes.as_slice());
-		let mut o = [0u8; 32];
-		// get challenge from hashers
-        h.finalize_xof().read(&mut o);
-		let c: Fr = Fr::from_be_bytes_mod_order(&o);
-		// calculate s 
-		let s = r + &(x * c);
-		// POK = (R, s)
-
-		// VERIFIER
-		let R_v: K = G.mul(x).into();
-		let P: K = (G.mul(s) - R_v.mul(c)).into();
-		assert!(P == R);
-	}
 
 	#[test]
 	fn authorities_call_works() {

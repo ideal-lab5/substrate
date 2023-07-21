@@ -59,6 +59,7 @@ pallet-transaction-payment-rpc = { version = "4.0.0-dev", path = "../../../frame
 pallet-session = { version = "4.0.0-dev", default-features = false, features = [
 	"historical",
 ], path = "../../../frame/session" }
+etf-rpc = { version = "0.10.0", path = "../../../client/etf", default-features = false }
 
 # These dependencies are used for runtime benchmarking
 frame-benchmarking = { version = "4.0.0-dev", path = "../../../frame/benchmarking" }

@@ -92,10 +92,7 @@ sp_api::decl_runtime_apis! {
 		/// Return the current set of authorities.
 		fn authorities() -> Vec<AuthorityId>;
 
-		/// return the identity for the slot
-		fn identity(slot: Slot) -> Vec<u8>;
-
 		/// return the secret for the current slot
-		fn secret(slot: u64) -> [u8;32];
+		fn secret() -> [u8;32];
 	}
 }

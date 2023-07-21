@@ -14,6 +14,7 @@ use sp_consensus_aura::{
 };
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
+	RuntimeAppPublic,
 	SaturatedConversion,
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -514,16 +515,9 @@ impl_runtime_apis! {
 			Aura::authorities().into_inner()
 		}
 
-		fn identity(slot: Slot) -> Vec<u8> {
-			let authorities = Self::authorities();
-			let s = u64::from(slot);
-			let author: &AuraId = &authorities[s as usize % authorities.len()];
-			let mut id = author.to_string();
-			id.push_str(&s.to_string());
-			id.into()
-		}
-
-		fn secret(context_block_number: u64) -> [u8;32] {
+		fn secret() -> [u8;32] {
+			// Driemworks::TODO
+			// read master secret from somehwere else...
 			[2;32]
 			// let key = context_block_number.to_string();
 			// log::info!("Calling secret({:?})", key);
@@ -532,6 +526,17 @@ impl_runtime_apis! {
 			// 	Ok(Some(secret)) => secret,
 			// 	_ => [0;32]
 			// }
+		}
+	}
+
+	impl sp_consensus_etf::EtfApi<Block> for Runtime {
+		fn identity(slot: sp_consensus_slots::Slot) -> Vec<u8> {
+			let authorities = Aura::authorities().into_inner();
+			let s = u64::from(slot);
+			let author: &AuraId = &authorities[s as usize % authorities.len()];
+			let mut id = author.to_raw_vec();
+			id.append(&mut s.to_string().as_bytes().to_vec());
+			id.into()
 		}
 	}
 

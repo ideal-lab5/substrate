@@ -213,9 +213,9 @@ pub mod pallet {
 			let active = ActiveSessionIndex::<T>::get();
 
 			// if ending a session => submit new keys
-			if next == active + 1 {
-				Self::refresh_keys(next, Self::validators().into());
-			}
+			// if next == active + 1 {
+			// 	Self::refresh_keys(next, Self::validators().into());
+			// }
 			// // if planning an upcoming session, then calculate new key shares
 			// if current == active + 1 {
 			// 	// TODO
@@ -272,44 +272,44 @@ pub mod pallet {
 		}
 	}
 
-	 #[pallet::inherent]
-	 impl<T: Config> ProvideInherent for Pallet<T>
-	 where
-		 <T as frame_system::Config>::Hash: From<H256>,
-	 {
-		 type Call = Call<T>;
-		 type Error = sp_inherents::MakeFatalError<()>;
-		 const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
+	//  #[pallet::inherent]
+	//  impl<T: Config> ProvideInherent for Pallet<T>
+	//  where
+	// 	 <T as frame_system::Config>::Hash: From<H256>,
+	//  {
+	// 	 type Call = Call<T>;
+	// 	 type Error = sp_inherents::MakeFatalError<()>;
+	// 	 const INHERENT_IDENTIFIER: InherentIdentifier = *b"etfslots";
  
-		 fn create_inherent(data: &InherentData) -> Option<Self::Call> {
-			log::info!("Calling the inherent");
-			match data.get_data(&Self::INHERENT_IDENTIFIER) {
-				Ok(secret) => {
-					let s = secret.unwrap_or(Vec::new());
-					log::info!("found secret: {:?}", s.clone());
-					let slot: Slot = data.get_data(b"auraslot").ok().flatten()?;
-					log::info!("Found slot: {:?}", slot);
-					Some(Call::reveal_slot_secret { slot, secret: s })
-				},
-				Err(e) => {
-					panic!("{:?}", e);
-				}
-			}
+	// 	 fn create_inherent(data: &InherentData) -> Option<Self::Call> {
+	// 		log::info!("Calling the inherent");
+	// 		match data.get_data(&Self::INHERENT_IDENTIFIER) {
+	// 			Ok(secret) => {
+	// 				let s = secret.unwrap_or(Vec::new());
+	// 				log::info!("found secret: {:?}", s.clone());
+	// 				let slot: Slot = data.get_data(b"auraslot").ok().flatten()?;
+	// 				log::info!("Found slot: {:?}", slot);
+	// 				Some(Call::reveal_slot_secret { slot, secret: s })
+	// 			},
+	// 			Err(e) => {
+	// 				panic!("{:?}", e);
+	// 			}
+	// 		}
 			
-		 }
+	// 	 }
  
-		 fn is_inherent(call: &Self::Call) -> bool {
-			matches!(call, Call::reveal_slot_secret { .. })
-		 }
+	// 	 fn is_inherent(call: &Self::Call) -> bool {
+	// 		matches!(call, Call::reveal_slot_secret { .. })
+	// 	 }
 
-		 fn check_inherent(
-			call: &Self::Call,
-			data: &InherentData,
-		) -> Result<(), Self::Error> {
-			// todo
-			Ok(())
-		}
-	 }
+	// 	 fn check_inherent(
+	// 		call: &Self::Call,
+	// 		data: &InherentData,
+	// 	) -> Result<(), Self::Error> {
+	// 		// todo
+	// 		Ok(())
+	// 	}
+	//  }
  
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {

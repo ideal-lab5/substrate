@@ -71,6 +71,7 @@ where
 
 	match check_result {
 		Ok((header, slot, seal)) => {
+			// DRIEMWORKS::TODO
 			let expected_author = crate::standalone::slot_author::<P>(slot.slot, &authorities);
 			let should_equiv_check = check_for_equivocation.check_for_equivocation();
 			if let (true, Some(expected)) = (should_equiv_check, expected_author) {
@@ -145,7 +146,7 @@ where
 	where
 		C: ProvideRuntimeApi<B>,
 		C::Api: BlockBuilderApi<B>,
-		CIDP: CreateInherentDataProviders<B, Vec<u8>>,
+		CIDP: CreateInherentDataProviders<B, ()>,
 	{
 		let inherent_res = self
 			.client
@@ -174,7 +175,7 @@ where
 	P: Pair + Send + Sync + 'static,
 	P::Public: Send + Sync + Hash + Eq + Clone + Decode + Encode + Debug + 'static,
 	P::Signature: Encode + Decode,
-	CIDP: CreateInherentDataProviders<B, Vec<u8>> + Send + Sync,
+	CIDP: CreateInherentDataProviders<B, ()> + Send + Sync,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	async fn verify(
@@ -195,10 +196,11 @@ where
 
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
-		let claim = find_pre_digest::<B, P::Signature>(&block.header)
-			.map_err(|e| format!("Could not fetch predigest at {:?}: {}", parent_hash, e))?;
-		let secret = claim.secret;
-		log::info!("IMPORT QUEUE SECRET: {:?}", secret);
+		// DRIEMWORKS::TODO
+		// let claim = find_pre_digest::<B, P::Signature>(&block.header)
+		// 	.map_err(|e| format!("Could not fetch predigest at {:?}: {}", parent_hash, e))?;
+		// let secret = claim.secret;
+		// log::info!("IMPORT QUEUE SECRET: {:?}", secret);
 		let authorities = authorities(
 			self.client.as_ref(),
 			parent_hash,
@@ -209,7 +211,7 @@ where
 
 		let create_inherent_data_providers = self
 			.create_inherent_data_providers
-			.create_inherent_data_providers(parent_hash, secret.into())
+			.create_inherent_data_providers(parent_hash, ())
 			.await
 			.map_err(|e| Error::<B>::Client(sp_blockchain::Error::Application(e)))?;
 
@@ -379,7 +381,7 @@ where
 	P::Public: Clone + Eq + Send + Sync + Hash + Debug + Encode + Decode,
 	P::Signature: Encode + Decode,
 	S: sp_core::traits::SpawnEssentialNamed,
-	CIDP: CreateInherentDataProviders<Block, Vec<u8>> + Sync + Send + 'static,
+	CIDP: CreateInherentDataProviders<Block, ()> + Sync + Send + 'static,
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send + Sync,
 {
 	let verifier = build_verifier::<P, _, _, _>(BuildVerifierParams {

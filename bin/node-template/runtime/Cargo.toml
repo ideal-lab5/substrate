@@ -36,6 +36,7 @@ sp-block-builder = { version = "4.0.0-dev", default-features = false, path = "..
 sp-consensus-aura = { version = "0.10.0-dev", default-features = false, path = "../../../primitives/consensus/aura" }
 sp-consensus-etf = { version = "0.10.0-dev", default-features = false, path = "../../../primitives/consensus/etf" }
 sp-consensus-grandpa = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/consensus/grandpa" }
+sp-consensus-slots = { version = "0.10.0-dev", default-features = false, path = "../../../primitives/consensus/slots" }
 sp-core = { version = "21.0.0", default-features = false, path = "../../../primitives/core" }
 sp-inherents = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/inherents"}
 sp-offchain = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/offchain" }
@@ -87,6 +88,7 @@ std = [
 	"sp-consensus-aura/std",
 	"sp-consensus-etf/std",
 	"sp-consensus-grandpa/std",
+	"sp-consensus-slots/std",
 	"sp-core/std",
 	"sp-inherents/std",
 	"sp-offchain/std",
