@@ -617,8 +617,9 @@ impl_runtime_apis! {
 			SubstrateTest::authorities().into_iter().map(|auth| AuraId::from(auth)).collect()
 		}
 
-		// DRIEMWORKS::TODO
-		fn secret() -> [u8;32] { todo!() }
+		fn secret() -> [u8;32] {
+			[2;32]
+		}
 	}
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
