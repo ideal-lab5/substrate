@@ -69,18 +69,16 @@ use sha2::Digest;
 use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
 use ark_ff::BigInteger;
 use ark_bls12_381::{Fr, G2Projective};
+use crate::dleq::DLEQProof;
 
 type K = ark_bls12_381::G1Affine;
 
-type SecretKey = SK<K>;
 
-type ThinVrf = Vrf<K>;
-
-type H2C = ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher::<
-    <K as ark_ec::AffineRepr>::Group,
-    ark_ff::fields::field_hashers::DefaultFieldHasher<sha2::Sha256>,
-    ark_ec::hashing::curve_maps::wb::WBMap<ark_bls12_381::g1::Config>,
->;
+// type H2C = ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher::<
+//     <K as ark_ec::AffineRepr>::Group,
+//     ark_ff::fields::field_hashers::DefaultFieldHasher<sha2::Sha256>,
+//     ark_ec::hashing::curve_maps::wb::WBMap<ark_bls12_381::g1::Config>,
+// >;
 
 /// Get the slot duration for Aura by reading from a runtime API at the best block's state.
 pub fn slot_duration<A, B, C>(client: &C) -> CResult<SlotDuration>
@@ -142,14 +140,16 @@ pub async fn claim_slot<B, P: Pair>(
 			let mut id = p.to_raw_vec();
 			let s = u64::from(slot);
 			id.append(&mut s.to_string().as_bytes().to_vec());
-			let pk = hash_to_g1(&id);
-			let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
-				.expect("input is padded with zeroes; qed");
-			let mut rng = ChaCha20Rng::from_seed(seed);
+			// let pk = hash_to_g1(&id);
+			// let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
+			// 	.expect("input is padded with zeroes; qed");
+			// let mut rng = ChaCha20Rng::from_seed(seed);
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
+			// I could get the generator from the runtime! that's what the EtF pallet does
+			let (proof, d) = DLEQProof::new(&id, x, K::generator());
 			// the (to be exposed) slot secret
-			let d: K = pk.mul(x).into();
-			let proof = prepare_proof(x, d, pk);
+			// let d: K = pk.mul(x).into();
+			// let proof = prepare_proof(x, d, pk);
 			let pre_digest = PreDigest {
 				slot: slot, 
 				secret: convert_to_bytes::<K, 48>(d).try_into().unwrap(),
@@ -172,109 +172,6 @@ pub async fn claim_slot<B, P: Pair>(
 	
 	public
 }
-
-// TODO: proper error handling
-fn convert_from_bytes<E: CanonicalDeserialize, const N: usize>(bytes: &[u8; N]) -> Option<E> {
-	let k: E = E::deserialize_compressed(&bytes[..]).unwrap();
-	Some(k)
-}
-
-// should it be an error instead?
-fn convert_to_bytes<E: CanonicalSerialize, const N: usize>(k: E) -> [u8;N] {
-	let mut out = Vec::with_capacity(k.compressed_size());
-	k.serialize_compressed(&mut out).unwrap_or(());
-	let o: [u8; N] = out.try_into().unwrap_or([0;N]);
-	o
-}
-
-fn hash_to_g1(b: &[u8]) -> K {
-    let mut nonce = 0u32;
-    loop {
-        let c = [b, &nonce.to_be_bytes()].concat();
-        match K::from_random_bytes(&sha256(&c)) {
-            Some(v) => {
-                // if v.is_in_correct_subgroup_assuming_on_curve() { return v.into(); }
-                return v.mul_by_cofactor_to_group().into();
-            }
-            None => nonce += 1,
-        }
-    }
-}
-
-fn sha256(b: &[u8]) -> Vec<u8> {
-    let mut hasher = sha2::Sha256::new();
-	sha2::Digest::update(&mut hasher, b);
-    // hasher.update(b);
-    hasher.finalize().to_vec()
-}
-
-// TODO: serialization??
-/// a struct to hold a DLEQ proof
-pub struct Proof<K, S> {
-	/// the first commitment point rG
-    pub commitment_1: K,
-	///  the second commitment point rH
-    pub commitment_2: K,
-	/// the witness s = r + c*x
-    pub witness: S,
-	/// secret * G (can probably remove...)
-    pub out: K,
-}
-
-/// Prepare a DLEQ proof of knowledge of the value 'x'
-/// 
-/// * `x`: The secret (scalar)
-///
-pub fn prepare_proof(x: Fr, d: K, q: K) -> Proof<K, Fr> {
-    let mut rng = ChaCha20Rng::from_seed([2;32]);
-    let r: Fr = Fr::rand(&mut rng);
-    let commitment_1: K = K::generator().mul(r).into();
-    let commitment_2: K = q.mul(r).into();
-    let pk: K = K::generator().mul(x).into();
-    let c: Fr = prepare_witness(vec![commitment_1, commitment_2, pk, d]);
-    let s = r + x * c;
-    Proof {
-        commitment_1, 
-        commitment_2, 
-        witness: s, 
-        out: pk
-    }
-}
-
-/// verify the proof was generated on the given input
-/// 
-/// * `q`: The group element such that d = xq for the secret q
-/// * `d`: The 'secret'
-/// * `proof`: The DLEQ proof to verify 
-/// 
-fn verify_proof(q: K , d: K, proof: Proof<K, Fr>) -> bool {
-    let c = prepare_witness(vec![proof.commitment_1, proof.commitment_2, proof.out, d]);
-    let check_x: K = (proof.out.mul(c) - K::generator().mul(proof.witness)).into();
-    let check_y: K = (d.mul(c) - q.mul(proof.witness)).into();
-
-    check_x.x.eq(&proof.commitment_1.x) &&
-        check_y.x.eq(&proof.commitment_2.x)
-}
-
-/// Prepare a witness for the proof using Shake128
-/// 
-/// `p`: A point in the group G1 
-/// 
-fn prepare_witness(points: Vec<K>) -> Fr {
-    let mut h = sha3::Shake128::default();
-
-    for p in points.iter() {
-        let mut bytes = Vec::with_capacity(p.compressed_size());
-        p.serialize_compressed(&mut bytes).unwrap();
-        h.update(bytes.as_slice());
-    }
-    
-    let mut o = [0u8; 32];
-    // get challenge from hasher
-    h.finalize_xof().read(&mut o);
-    Fr::from_be_bytes_mod_order(&o)
-}
-
 
 /// Produce the pre-runtime digest containing the slot info and slot secret.
 ///
@@ -499,36 +396,59 @@ where
 		header.digest_mut().push(seal);
 		return Err(SealVerificationError::Deferred(header, slot))
 	} else {
+		// verify the DLEQ proof
 		let expected_author =
-			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
+			slot_author::<P>(slot, authorities)
+			.ok_or(SealVerificationError::SlotAuthorNotFound)?;
 		let mut id = expected_author.to_raw_vec();
 		let s = u64::from(slot);
 		id.append(&mut s.to_string().as_bytes().to_vec());
 		// the expected public key associated with the slot
-		let pk = hash_to_g1(&id);
+		// let pk = hash_to_g1(&id);
 		let secret_bytes = claim.secret;
 		// TODO: error handling
 		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
 		let p = claim.proof;
-		let proof = Proof {
+		let proof = DLEQProof {
 			commitment_1: convert_from_bytes::<K, 48>(&p.0).unwrap(),
 			commitment_2: convert_from_bytes::<K, 48>(&p.1).unwrap(),
 			witness: convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
 			out: convert_from_bytes::<K, 48>(&p.3).unwrap(),
 		};
-		let is_valid = verify_proof(pk, d, proof);
-		// TODO: create error type
-		assert!(is_valid);
+		// let is_valid = verify_proof(pk, d, proof);
+		// if  {
+			
+		// } else {
+		// 	// TODO: create error type
+		// 	Err(SealVerificationError::BadSignature)
+		// }
+		// assert!(is_valid);
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let pre_hash = header.hash();
 
-		if P::verify(&sig, pre_hash.as_ref(), expected_author) {
+		if DLEQProof::verify(&id, d, proof) && P::verify(&sig, pre_hash.as_ref(), expected_author) {
 			Ok((header, claim, seal))
 		} else {
 			Err(SealVerificationError::BadSignature)
 		}
 	}
+}
+
+// TODO: proper error handling
+/// a helper function to deserialize arkworks elements from bytes
+pub fn convert_from_bytes<E: CanonicalDeserialize, const N: usize>(bytes: &[u8; N]) -> Option<E> {
+	let k: E = E::deserialize_compressed(&bytes[..]).unwrap();
+	Some(k)
+}
+
+// should it be an error instead?
+/// a helper function to serialize arkworks elements to bytes
+pub fn convert_to_bytes<E: CanonicalSerialize, const N: usize>(k: E) -> [u8;N] {
+	let mut out = Vec::with_capacity(k.compressed_size());
+	k.serialize_compressed(&mut out).unwrap_or(());
+	let o: [u8; N] = out.try_into().unwrap_or([0;N]);
+	o
 }
 
 #[cfg(test)]
@@ -569,4 +489,6 @@ mod tests {
 			]
 		);
 	}
+
+	// add secrets_call_works() test here
 }

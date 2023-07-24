@@ -249,7 +249,6 @@ pub fn new_full(config: Configuration) -> Result<TaskManager, ServiceError> {
 							*timestamp,
 							slot_duration,
 						);
-
 					Ok((slot, timestamp))
 				},
 				force_authoring,
