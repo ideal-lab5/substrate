@@ -18,6 +18,7 @@ type K = ark_bls12_381::G1Affine;
 
 // TODO: serialization??
 /// a struct to hold a DLEQ proof
+#[derive(Default, Clone)]
 pub struct DLEQProof {
 	/// the first commitment point rG
     pub commitment_1: K,
@@ -125,4 +126,37 @@ fn sha256(b: &[u8]) -> Vec<u8> {
 	sha2::Digest::update(&mut hasher, b);
     // hasher.update(b);
     hasher.finalize().to_vec()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand_chacha::{
+        ChaCha20Rng,
+        rand_core::SeedableRng,
+    };
+
+    #[test]
+    fn dleq_prepare_and_verify_works() {
+        let id = b"test_id_1".to_vec();
+        let mut rng = ChaCha20Rng::seed_from_u64(0u64);
+        let x = Fr::rand(&mut rng);
+        let g = K::generator();
+        let (proof, d) = DLEQProof::new(&id, x, g);
+        // valid proof
+        let mut validity = DLEQProof::verify(&id, d, proof.clone());
+        assert!(validity == true);
+        // valid proof but wrong id
+        let bad_id = b"test_id_2".to_vec();
+        let mut validity = DLEQProof::verify(&bad_id, d, proof.clone());
+        assert!(validity == false);
+        // valid proof but wrong slot secret
+        let bad_slot_secret = K::rand(&mut rng);
+        let mut validity = DLEQProof::verify(&id, bad_slot_secret, proof);
+        assert!(validity == false);
+        // invalid proof but correct id and slot secret
+        let (new_proof, new_d) = DLEQProof::new(&id, x, bad_slot_secret);
+        let mut validity = DLEQProof::verify(&id, d, new_proof);
+        assert!(validity == false);
+    }
 }

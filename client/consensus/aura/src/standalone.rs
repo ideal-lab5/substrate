@@ -48,10 +48,6 @@ use dleq_vrf::{
 };
 use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_std::{UniformRand, ops::Mul};
-use rand_chacha::{
-	ChaCha20Rng,
-	rand_core::SeedableRng,
-};
 use ark_ff::{PrimeField, fields::models::fp::Fp};
 use ark_ec::AffineRepr;
 
@@ -136,20 +132,12 @@ pub async fn claim_slot<B, P: Pair>(
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
-			// TODO should probably be passed as a param
 			let mut id = p.to_raw_vec();
 			let s = u64::from(slot);
 			id.append(&mut s.to_string().as_bytes().to_vec());
-			// let pk = hash_to_g1(&id);
-			// let seed = <[u8; 32]>::decode(&mut TrailingZeroInput::new(b"test"))
-			// 	.expect("input is padded with zeroes; qed");
-			// let mut rng = ChaCha20Rng::from_seed(seed);
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
 			// I could get the generator from the runtime! that's what the EtF pallet does
 			let (proof, d) = DLEQProof::new(&id, x, K::generator());
-			// the (to be exposed) slot secret
-			// let d: K = pk.mul(x).into();
-			// let proof = prepare_proof(x, d, pk);
 			let pre_digest = PreDigest {
 				slot: slot, 
 				secret: convert_to_bytes::<K, 48>(d).try_into().unwrap(),
@@ -323,19 +311,6 @@ where
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 
-// pub fn fetch_slot_id<A, B, C>(
-// 	client: &C,
-// 	parent_hash: B::Hash,
-// 	slot: Slot,
-// ) -> Result<Vec<A>, ConsensusError> {
-// 	// Driemworks::TODO new error type
-// 	client
-// 		.runtime_api()
-// 		.identity(parent_hash, slot)
-// 		.ok() 
-// 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
-// }
-
 /// Errors in slot and seal verification.
 #[derive(Debug, thiserror::Error)]
 pub enum SealVerificationError<Header> { 
@@ -403,10 +378,8 @@ where
 		let mut id = expected_author.to_raw_vec();
 		let s = u64::from(slot);
 		id.append(&mut s.to_string().as_bytes().to_vec());
-		// the expected public key associated with the slot
-		// let pk = hash_to_g1(&id);
 		let secret_bytes = claim.secret;
-		// TODO: error handling
+		// TODO: error handling...
 		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
 		let p = claim.proof;
 		let proof = DLEQProof {
@@ -415,14 +388,6 @@ where
 			witness: convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
 			out: convert_from_bytes::<K, 48>(&p.3).unwrap(),
 		};
-		// let is_valid = verify_proof(pk, d, proof);
-		// if  {
-			
-		// } else {
-		// 	// TODO: create error type
-		// 	Err(SealVerificationError::BadSignature)
-		// }
-		// assert!(is_valid);
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let pre_hash = header.hash();
@@ -456,9 +421,9 @@ mod tests {
 	use super::*;
 	use sp_keyring::sr25519::Keyring;
 
-	use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
-	use ark_ff::BigInteger;
-	use ark_ec::{pairing::Pairing, CurveConfig, Group};
+	// use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
+	// use ark_ff::BigInteger;
+	// use ark_ec::{pairing::Pairing, CurveConfig, Group};
 
 	#[test]
 	fn authorities_call_works() {
@@ -489,6 +454,4 @@ mod tests {
 			]
 		);
 	}
-
-	// add secrets_call_works() test here
 }

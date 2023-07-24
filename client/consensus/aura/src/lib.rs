@@ -884,14 +884,15 @@ mod tests {
 			Default::default(),
 			Default::default(),
 		);
-		assert!(worker.claim_slot(&head, 0.into(), &authorities).await.is_none());
-		assert!(worker.claim_slot(&head, 1.into(), &authorities).await.is_none());
-		assert!(worker.claim_slot(&head, 2.into(), &authorities).await.is_none());
-		assert!(worker.claim_slot(&head, 3.into(), &authorities).await.is_some());
-		assert!(worker.claim_slot(&head, 4.into(), &authorities).await.is_none());
-		assert!(worker.claim_slot(&head, 5.into(), &authorities).await.is_none());
-		assert!(worker.claim_slot(&head, 6.into(), &authorities).await.is_none());
-		assert!(worker.claim_slot(&head, 7.into(), &authorities).await.is_some());
+
+		assert!(worker.claim_slot(&head, 0.into(), &(authorities.clone(), [0;32])).await.is_none());
+		assert!(worker.claim_slot(&head, 1.into(), &(authorities.clone(), [0;32])).await.is_none());
+		assert!(worker.claim_slot(&head, 2.into(), &(authorities.clone(), [0;32])).await.is_none());
+		assert!(worker.claim_slot(&head, 3.into(), &(authorities.clone(), [0;32])).await.is_some());
+		assert!(worker.claim_slot(&head, 4.into(), &(authorities.clone(), [0;32])).await.is_none());
+		assert!(worker.claim_slot(&head, 5.into(), &(authorities.clone(), [0;32])).await.is_none());
+		assert!(worker.claim_slot(&head, 6.into(), &(authorities.clone(), [0;32])).await.is_none());
+		assert!(worker.claim_slot(&head, 7.into(), &(authorities, [0;32])).await.is_some());
 	}
 
 	#[tokio::test]
