@@ -33,6 +33,8 @@ use sp_runtime::{
 	offchain::storage::StorageRetrievalError,
 };
 
+use ark_serialize::CanonicalDeserialize;
+
 pub(crate) use ark_scale::hazmat::ArkScaleProjective;
 const HOST_CALL: ark_scale::Usage = ark_scale::HOST_CALL;
 pub(crate) type ArkScale<T> = ark_scale::ArkScale<T, HOST_CALL>;
@@ -63,19 +65,9 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
-		/// the maximum number of validators
-		type MaxAuthorities: Get<u32>;
 		/// Something that provides randomness in the runtime.
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
-
-	/// The validator set
-	/// currently static as defined on genesis but can be made dynamic
-	#[pallet::storage]
-	#[pallet::getter(fn validators)]
-	pub type Validators<T: Config> = StorageValue<
-		_, BoundedVec<T::AccountId, T::MaxAuthorities>, ValueQuery,
-	>;
 
 	/// public params for ibe
 	#[pallet::storage]
@@ -99,15 +91,15 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	#[derive(frame_support::DefaultNoBound)]
-	pub struct GenesisConfig<T: Config> {
-		pub initial_validators: Vec<T::AccountId>,
+	pub struct GenesisConfig {
+		// SCALE encoded?
 		pub initial_ibe_params: Vec<u8>,
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
-			Pallet::<T>::initialize_validators(&self.initial_validators);
+			// Pallet::<T>::initialize_validators(&self.initial_validators);
 			Pallet::<T>::set_ibe_params(&self.initial_ibe_params)
 				.expect("The input should be a valid generator of G1; qed");
 		}
@@ -135,30 +127,18 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
 
-	/// initialize the validator set
-	fn initialize_validators(validators: &[T::AccountId]) {
-		log::info!("Initializing validators defined in the chain spec.");
-		assert!(validators.len() > 0, "At least 1 validator should be initialized");
-		assert!(<Validators<T>>::get().is_empty(), "Validators are already initialized!");
-		let bounded = <BoundedSlice<'_, _, T::MaxAuthorities>>::try_from(validators)
-				.expect("Initial authority set must be less than T::MaxAuthorities");
-		<Validators<T>>::put(bounded);
-	}
-
 	/// attempt to deserialize the slice to an element of G1 
 	/// and add it to storage if valid
 	///
 	/// `g`: A compressed and serialized point in G1
 	///
 	fn set_ibe_params(g: &Vec<u8>) -> DispatchResult {
-		// check if the input can be decoded as G1
-		log::info!("g is {:?} long", g.len());
-		let _ = <ArkScale<Vec<ark_bls12_381::G1Affine>> as Decode>::
-			decode(&mut g.as_slice())
-			.map_err(|e| {
-				log::info!("This is the error that we see: {:?}", e);
-				return Error::<T>::G1DecodingFailure;
-			})?;
+		let _ = 
+			ark_bls12_381::G1Affine::deserialize_compressed(&g[..])
+			.map_err(|_| Error::<T>::G1DecodingFailure)?;
+		// let _ = <ArkScale<Vec<ark_bls12_381::G1Affine>> as Decode>::
+		// 	decode(&mut g.as_slice())
+		// 	.map_err(|_| Error::<T>::G1DecodingFailure)?;
 		IBEParams::<T>::set(g.to_owned());
 		Ok(())
 	}

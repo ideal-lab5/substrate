@@ -158,18 +158,14 @@ fn testnet_genesis(
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
 		aura: AuraConfig {
-			// authorities: initial_authorities.iter().map(|x| (x.1.clone())).collect(),
-			authorities: vec![],
+			authorities: initial_authorities.iter().map(|x| (x.1.clone())).collect(),
 		},
 		grandpa: GrandpaConfig {
-			// authorities: initial_authorities.iter().map(|x| (x.2.clone(), 1)).collect(),
-			authorities: vec![],
+			authorities: initial_authorities.iter().map(|x| (x.2.clone(), 1)).collect(),
 		},
 		etf: EtfConfig {
-			initial_validators: initial_authorities.iter().map(|x| x.0.clone()).collect::<Vec<_>>(),
-			// DRIEMWORKS::TODO I would rather have this encoded as a hex string...
-			// array_bytes::hex_n_unchecked...
-			initial_ibe_params: vec![151, 241, 211, 167, 49, 151, 215, 148, 38, 149, 99, 140, 79, 169, 172, 15, 195, 104, 140, 79, 151, 116, 185, 5, 161, 78, 58, 63, 23, 27, 172, 88, 108, 85, 232, 63, 249, 122, 26, 239, 251, 58, 240, 10, 219, 34, 198, 187]
+			initial_ibe_params: array_bytes::hex2bytes_unchecked(
+				"a191b705ef18a6e4e5bd4cc56de0b8f94b1f3c908f3e3fcbd4d1dc12eb85059be7e7d801edc1856c8cfbe6d63a681c1f"),
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
