@@ -60,7 +60,6 @@ impl pallet_etf::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext(
-    validators: Vec<u64>,
     hex: &str,
 ) -> sp_io::TestExternalities {
 
@@ -68,7 +67,7 @@ pub fn new_test_ext(
     let ibe_pps: Vec<u8> = array_bytes::hex2bytes_unchecked(hex);
 
     GenesisBuild::<Test>::assimilate_storage(
-        &pallet_etf::GenesisConfig::<Test> {
+        &pallet_etf::GenesisConfig {
             initial_ibe_params: ibe_pps,
         },
         &mut t,
