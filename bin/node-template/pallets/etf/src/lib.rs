@@ -1,8 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://docs.substrate.io/reference/frame-pallets/>
+/// # EtF Pallet
+///
+/// The EtF pallet stores public parameters needed for the identity based encryption scheme
+///
 pub use pallet::*;
 
 #[cfg(test)]
@@ -82,7 +83,6 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
-			// Pallet::<T>::initialize_validators(&self.initial_validators);
 			Pallet::<T>::set_ibe_params(&self.initial_ibe_params)
 				.expect("The input should be a valid generator of G1; qed");
 		}
@@ -113,7 +113,7 @@ impl<T: Config> Pallet<T> {
 	/// attempt to deserialize the slice to an element of G1 
 	/// and add it to storage if valid
 	///
-	/// `g`: A compressed and serialized point in G1
+	/// `g`: A compressed and serialized element of G1
 	///
 	fn set_ibe_params(g: &Vec<u8>) -> DispatchResult {
 		let _ = 

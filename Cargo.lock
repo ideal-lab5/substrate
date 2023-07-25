@@ -341,26 +341,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ark-crypto-primitives"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f3a13b34da09176a8baba701233fdffbaa7c1b1192ce031a3da4e55ce1f1a56"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-r1cs-std",
- "ark-relations",
- "ark-serialize",
- "ark-snark",
- "ark-std",
- "blake2",
- "derivative",
- "digest 0.10.7",
- "sha2 0.10.6",
- "tracing",
-]
-
-[[package]]
 name = "ark-ec"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -545,18 +525,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "ark-snark"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84d3cc6833a335bb8a600241889ead68ee89a3cf8448081fb7694c0fe503da63"
-dependencies = [
- "ark-ff",
- "ark-relations",
- "ark-serialize",
- "ark-std",
 ]
 
 [[package]]
@@ -6653,10 +6621,6 @@ name = "pallet-etf"
 version = "4.0.0-dev"
 dependencies = [
  "ark-bls12-381",
- "ark-crypto-primitives",
- "ark-ec",
- "ark-ff",
- "ark-poly",
  "ark-scale 0.4.0-beta",
  "ark-serialize",
  "ark-std",
@@ -6667,7 +6631,6 @@ dependencies = [
  "frame-system",
  "hex",
  "log",
- "pallet-session",
  "parity-scale-codec",
  "primitive-types",
  "rand_chacha 0.3.1",
@@ -6676,10 +6639,8 @@ dependencies = [
  "sp-ark-models",
  "sp-core",
  "sp-crypto-ec-utils",
- "sp-inherents",
  "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
 ]
 

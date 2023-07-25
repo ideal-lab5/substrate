@@ -342,6 +342,7 @@ pub fn check_header_slot_and_seal<B: BlockT, P: Pair>(
 	slot_now: Slot,
 	mut header: B::Header,
 	authorities: &[AuthorityId<P>],
+	g: Vec<u8>,
 ) -> Result<(B::Header, PreDigest, DigestItem), SealVerificationError<B::Header>>
 where
 	P::Signature: Codec,
@@ -370,6 +371,7 @@ where
 		let secret_bytes = claim.secret;
 		// TODO: error handling...
 		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
+		let pk: K = K::deserialize_compressed(&g[..]).unwrap();
 		let p = claim.proof;
 		// DRIEMWORKS::TODO clean this up
 		let proof = DLEQProof {
@@ -382,7 +384,7 @@ where
 		// chain state.
 		let pre_hash = header.hash();
 
-		if DLEQProof::verify(&id, d, proof) 
+		if DLEQProof::verify(&id, d, pk, proof) 
 			&& P::verify(&sig, pre_hash.as_ref(), expected_author) {
 			Ok((header, claim, seal))
 		} else {

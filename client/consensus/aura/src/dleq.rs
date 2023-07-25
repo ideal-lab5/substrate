@@ -1,5 +1,4 @@
 /// DLEQ Proofs
-
 use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_std::{UniformRand, ops::Mul};
 use rand_chacha::{
@@ -45,9 +44,9 @@ impl DLEQProof {
     }
 
     /// verify a DLEQ Proof with a given id and slot secret
-    pub fn verify(id: &[u8], d: K, proof: DLEQProof) -> bool {
+    pub fn verify(id: &[u8], d: K, g: K, proof: DLEQProof) -> bool {
         let pk = hash_to_g1(&id);
-        verify_proof(pk, d, proof)
+        verify_proof(pk, d, g, proof)
     }
 }
 
@@ -76,11 +75,12 @@ fn prepare_proof(x: Fr, d: K, q: K, g: K) -> DLEQProof {
 /// 
 /// * `q`: The group element such that d = xq for the secret q
 /// * `d`: The 'secret'
+/// * `g`: A publicly known generator used to generate the proof
 /// * `proof`: The DLEQ proof to verify 
 /// 
-fn verify_proof(q: K , d: K, proof: DLEQProof) -> bool {
+fn verify_proof(q: K , d: K, g: K, proof: DLEQProof) -> bool {
     let c = prepare_witness(vec![proof.commitment_1, proof.commitment_2, proof.out, d]);
-    let check_x: K = (proof.out.mul(c) - K::generator().mul(proof.witness)).into();
+    let check_x: K = (proof.out.mul(c) - g.mul(proof.witness)).into();
     let check_y: K = (d.mul(c) - q.mul(proof.witness)).into();
 
     check_x.x.eq(&proof.commitment_1.x) &&
@@ -148,19 +148,19 @@ mod tests {
         panic!("generator bytes {:?}", test);
         let (proof, d) = DLEQProof::new(&id, x, g);
         // valid proof
-        let validity = DLEQProof::verify(&id, d, proof.clone());
+        let validity = DLEQProof::verify(&id, d, g, proof.clone());
         assert!(validity == true);
         // valid proof but wrong id
         let bad_id = b"test_id_2".to_vec();
-        let validity = DLEQProof::verify(&bad_id, d, proof.clone());
+        let validity = DLEQProof::verify(&bad_id, d, g, proof.clone());
         assert!(validity == false);
         // valid proof but wrong slot secret
         let bad_slot_secret = K::rand(&mut rng);
-        let validity = DLEQProof::verify(&id, bad_slot_secret, proof);
+        let validity = DLEQProof::verify(&id, bad_slot_secret, g, proof);
         assert!(validity == false);
         // invalid proof but correct id and slot secret
         let (new_proof, new_d) = DLEQProof::new(&id, x, bad_slot_secret);
-        let validity = DLEQProof::verify(&id, d, new_proof);
+        let validity = DLEQProof::verify(&id, d, g, new_proof);
         assert!(validity == false);
     }
 }

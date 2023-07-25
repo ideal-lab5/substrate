@@ -15,7 +15,7 @@ use try_runtime_cli::block_building_info::timestamp_with_aura_info;
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Substrate Node".into()
+		"EtF Node".into()
 	}
 
 	fn impl_version() -> String {

@@ -365,7 +365,6 @@ where
 	}
 
 	fn aux_data(&self, header: &B::Header, slot: Slot) -> Result<Self::AuxData, ConsensusError> {
-		// let public_key = 1u32;
 		let secret = secret(
 			self.client.as_ref(),
 			header.hash(),

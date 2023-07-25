@@ -19,7 +19,7 @@
 //! Module implementing the logic for verifying and importing AuRa blocks.
 
 use crate::{
-	authorities, find_pre_digest, standalone::SealVerificationError, AuthorityId, CompatibilityMode, Error,
+	authorities, ibe_params, find_pre_digest, standalone::SealVerificationError, AuthorityId, CompatibilityMode, Error,
 	LOG_TARGET,
 };
 use codec::{Codec, Decode, Encode};
@@ -57,6 +57,7 @@ fn check_header<C, B: BlockT, P: Pair>(
 	header: B::Header,
 	hash: B::Hash,
 	authorities: &[AuthorityId<P>],
+	g: Vec<u8>,
 	check_for_equivocation: CheckForEquivocation,
 ) -> Result<CheckedHeader<B::Header, (Slot, DigestItem)>, Error<B>>
 where
@@ -66,7 +67,7 @@ where
 {
 	let check_result =
 		crate::standalone::check_header_slot_and_seal::<B, P>(
-			slot_now, header, authorities
+			slot_now, header, authorities, g,
 		);
 
 	match check_result {
@@ -204,6 +205,11 @@ where
 		)
 		.map_err(|e| format!("Could not fetch authorities at {:?}: {}", parent_hash, e))?;
 
+		let ibe_params = ibe_params(
+			self.client.as_ref(),
+			parent_hash, 
+		).map_err(|e| format!("Could not fetch IBE generator at {:?}: {}", parent_hash, e))?;
+
 		let create_inherent_data_providers = self
 			.create_inherent_data_providers
 			.create_inherent_data_providers(parent_hash, ())
@@ -228,6 +234,7 @@ where
 			block.header,
 			hash,
 			&authorities[..],
+			ibe_params,
 			self.check_for_equivocation,
 		)
 		.map_err(|e| e.to_string())?;
