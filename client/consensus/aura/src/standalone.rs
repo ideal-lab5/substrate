@@ -39,13 +39,6 @@ use sp_runtime::{
 	DigestItem,
 };
 use sp_consensus_aura::digests::PreDigest;
-use dleq_vrf::{
-	Transcript, vrf, 
-	Signature, 
-	PublicKey,
-	SecretKey as SK, 
-	ThinVrf as Vrf, 
-};
 use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_std::{UniformRand, ops::Mul};
 use ark_ff::{PrimeField, fields::models::fp::Fp};
@@ -69,7 +62,7 @@ use crate::dleq::DLEQProof;
 
 type K = ark_bls12_381::G1Affine;
 
-
+// DRIEMWORKS::TODO
 // type H2C = ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher::<
 //     <K as ark_ec::AffineRepr>::Group,
 //     ark_ff::fields::field_hashers::DefaultFieldHasher<sha2::Sha256>,
@@ -126,6 +119,7 @@ pub async fn claim_slot<B, P: Pair>(
 	block_hash: B::Hash,
 	authorities: &[AuthorityId<P>],
 	secret: &[u8;32],
+	g: &[u8;48],
 	keystore: &KeystorePtr,
 ) -> Option<(PreDigest, P::Public)> 
 	where B: BlockT {
@@ -137,19 +131,16 @@ pub async fn claim_slot<B, P: Pair>(
 			id.append(&mut s.to_string().as_bytes().to_vec());
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
 			// I could get the generator from the runtime! that's what the EtF pallet does
-			let (proof, d) = DLEQProof::new(&id, x, K::generator());
+			let generator: K = convert_from_bytes::<K, 48>(g).unwrap();
+			let (proof, d) = DLEQProof::new(&id, x, generator);
 			let pre_digest = PreDigest {
 				slot: slot, 
 				secret: convert_to_bytes::<K, 48>(d).try_into().unwrap(),
 				proof: (
-					convert_to_bytes::<K, 48>(
-						proof.commitment_1).try_into().unwrap(),
-					convert_to_bytes::<K, 48>(
-						proof.commitment_2).try_into().unwrap(),
-					convert_to_bytes::<Fr, 32>(
-						proof.witness).try_into().unwrap(),
-					convert_to_bytes::<K, 48>(
-						proof.out).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(proof.commitment_1).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(proof.commitment_2).try_into().unwrap(),
+					convert_to_bytes::<Fr, 32>(proof.witness).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(proof.out).try_into().unwrap(),
 				),
 			};
 			Some((pre_digest.clone(), p.clone()))
@@ -339,7 +330,6 @@ pub enum SealVerificationError<Header> {
 	InvalidPreDigest(PreDigestLookupError),
 }
 
-// DRIEMWORKS::TODO
 /// Check a header has been signed by the right key. If the slot is too far in the future, an error
 /// will be returned. If it's successful, returns the pre-header (i.e. without the seal),
 /// the slot, and the digest item containing the seal.
@@ -373,8 +363,7 @@ where
 	} else {
 		// verify the DLEQ proof
 		let expected_author =
-			slot_author::<P>(slot, authorities)
-			.ok_or(SealVerificationError::SlotAuthorNotFound)?;
+			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
 		let mut id = expected_author.to_raw_vec();
 		let s = u64::from(slot);
 		id.append(&mut s.to_string().as_bytes().to_vec());
@@ -382,6 +371,7 @@ where
 		// TODO: error handling...
 		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
 		let p = claim.proof;
+		// DRIEMWORKS::TODO clean this up
 		let proof = DLEQProof {
 			commitment_1: convert_from_bytes::<K, 48>(&p.0).unwrap(),
 			commitment_2: convert_from_bytes::<K, 48>(&p.1).unwrap(),
@@ -392,7 +382,8 @@ where
 		// chain state.
 		let pre_hash = header.hash();
 
-		if DLEQProof::verify(&id, d, proof) && P::verify(&sig, pre_hash.as_ref(), expected_author) {
+		if DLEQProof::verify(&id, d, proof) 
+			&& P::verify(&sig, pre_hash.as_ref(), expected_author) {
 			Ok((header, claim, seal))
 		} else {
 			Err(SealVerificationError::BadSignature)
@@ -420,10 +411,6 @@ pub fn convert_to_bytes<E: CanonicalSerialize, const N: usize>(k: E) -> [u8;N] {
 mod tests {
 	use super::*;
 	use sp_keyring::sr25519::Keyring;
-
-	// use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
-	// use ark_ff::BigInteger;
-	// use ark_ec::{pairing::Pairing, CurveConfig, Group};
 
 	#[test]
 	fn authorities_call_works() {

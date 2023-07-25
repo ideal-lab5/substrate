@@ -17,13 +17,13 @@ log = { version = "0.4.17", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.2.2", default-features = false, features = [
 	"derive",
 ] }
+array-bytes = {version = "4.1", default-features = false }
 rand_chacha = { version = "0.3.1", default-features = false }
 
-sp-ark-bls12-381 = { version = "0.4.0-beta", default-features = false }
+sp-ark-bls12-381 = { version = "0.4.0-beta", features=["curve"], default-features = false }
 
 #sp-bls12-381 = { git = "https://github.com/paritytech/sp-curves.git", features = ["curve"], default-features = false }
-#sp-ark-models = { version = "0.4.0", default-features = false }
-#ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+sp-ark-models = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", features = [ "derive" ], default-features = false }
 ark-ff = { version = "0.4.0", default-features = false }
 ark-ec = { version = "0.4.0", default-features = false }
@@ -74,8 +74,7 @@ std = [
 	"sp-ark-bls12-381/std",
 	"sp-crypto-ec-utils/std",
 	#"sp-bls12-381/std",
-	#"sp-ark-models/std",
-	#"ark-bls12-381/std",
+	"sp-ark-models/std",
 	"ark-serialize/std",
 	"ark-ff/std",
 	"ark-ec/std",

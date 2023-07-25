@@ -1,7 +1,7 @@
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, 
 	GrandpaConfig, RuntimeGenesisConfig, Signature,
-	SudoConfig, SystemConfig, EtfConfig, SessionConfig, WASM_BINARY,
+	SudoConfig, SystemConfig, EtfConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -157,11 +157,6 @@ fn testnet_genesis(
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|k| (k, 1 << 60)).collect(),
 		},
-		session: SessionConfig {
-			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), x.0.clone(), session_keys(x.1.clone(), x.2.clone()))
-			}).collect::<Vec<_>>(),
-		},
 		aura: AuraConfig {
 			// authorities: initial_authorities.iter().map(|x| (x.1.clone())).collect(),
 			authorities: vec![],
@@ -172,6 +167,9 @@ fn testnet_genesis(
 		},
 		etf: EtfConfig {
 			initial_validators: initial_authorities.iter().map(|x| x.0.clone()).collect::<Vec<_>>(),
+			// DRIEMWORKS::TODO I would rather have this encoded as a hex string...
+			// array_bytes::hex_n_unchecked...
+			initial_ibe_params: vec![151, 241, 211, 167, 49, 151, 215, 148, 38, 149, 99, 140, 79, 169, 172, 15, 195, 104, 140, 79, 151, 116, 185, 5, 161, 78, 58, 63, 23, 27, 172, 88, 108, 85, 232, 63, 249, 122, 26, 239, 251, 58, 240, 10, 219, 34, 198, 187]
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.

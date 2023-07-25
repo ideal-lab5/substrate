@@ -1,3 +1,3 @@
 Primitives for Encryption to the Future
 
-License: Apache-2.0
+License: GPL-3.0

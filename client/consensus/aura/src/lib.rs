@@ -279,7 +279,7 @@ pub fn build_aura_worker<P, B, C, PF, I, SO, L, BS, Error>(
 	SyncOracle = SO,
 	JustificationSyncLink = L,
 	Claim = (PreDigest, P::Public),
-	AuxData = (Vec<AuthorityId<P>>, [u8;32]),
+	AuxData = (Vec<AuthorityId<P>>, [u8;32], [u8;48]),
 >
 where
 	B: BlockT,
@@ -354,7 +354,7 @@ where
 		Pin<Box<dyn Future<Output = Result<E::Proposer, ConsensusError>> + Send + 'static>>;
 	type Proposer = E::Proposer;
 	type Claim = (PreDigest, P::Public);
-	type AuxData = (Vec<AuthorityId<P>>, [u8;32]);
+	type AuxData = (Vec<AuthorityId<P>>, [u8;32], [u8;48]);
 
 	fn logging_target(&self) -> &'static str {
 		"aura"
@@ -379,8 +379,12 @@ where
 			*header.number() + 1u32.into(),
 			&self.compatibility_mode,
 		)?;
-		// TODO: get pubkey 
-		Ok((authorities, secret))
+		let ibe_params = ibe_params(
+			self.client.as_ref(),
+			header.hash(), 
+		)?;
+		// DRIEMWORKS::TODO: justify unwrap
+		Ok((authorities, secret, ibe_params.try_into().unwrap()))
 	}
 
 	fn authorities_len(&self, authorities: &Self::AuxData) -> Option<usize> {
@@ -398,6 +402,7 @@ where
 			header.hash(),
 			&aux.0, //authorities
 			&aux.1, // secret
+			&aux.2, // generator
 			&self.keystore,
 		).await
 	}
@@ -406,7 +411,6 @@ where
 		vec![crate::standalone::pre_digest::<P>(claim.0.clone())]
 	}
 
-	// DRIEMWORKS::TODO
 	async fn block_import_params(
 		&self,
 		header: B::Header,
@@ -473,7 +477,6 @@ where
 	fn proposing_remaining_duration(&self, slot_info: &SlotInfo<B>) -> std::time::Duration {
 		let parent_slot = find_pre_digest::<B, P::Signature>(&slot_info.chain_head).ok();
 
-		// DRIEMWORKS::TODO handle unwrap?
 		sc_consensus_slots::proposing_remaining_duration(
 			Some(parent_slot.unwrap().slot),
 			slot_info,
@@ -610,6 +613,24 @@ where
 	// DRIEMWORKS::TODO : Add new error type
 	runtime_api
 		.secret(parent_hash).ok()
+		.ok_or(ConsensusError::InvalidAuthoritiesSet)
+}
+
+/// Load the current IBE generator from the runtime at a specific block.
+pub fn ibe_params<A, B, C>(
+	client: &C,
+	parent_hash: B::Hash,
+) -> Result<Vec<u8>, ConsensusError>
+where
+	A: Codec + Debug,
+	B: BlockT,
+	C: ProvideRuntimeApi<B>,
+	C::Api: AuraApi<B, A>,
+{
+	client
+		.runtime_api()
+		.ibe_params(parent_hash)
+		.ok()
 		.ok_or(ConsensusError::InvalidAuthoritiesSet)
 }
 
@@ -884,15 +905,15 @@ mod tests {
 			Default::default(),
 			Default::default(),
 		);
-
-		assert!(worker.claim_slot(&head, 0.into(), &(authorities.clone(), [0;32])).await.is_none());
-		assert!(worker.claim_slot(&head, 1.into(), &(authorities.clone(), [0;32])).await.is_none());
-		assert!(worker.claim_slot(&head, 2.into(), &(authorities.clone(), [0;32])).await.is_none());
-		assert!(worker.claim_slot(&head, 3.into(), &(authorities.clone(), [0;32])).await.is_some());
-		assert!(worker.claim_slot(&head, 4.into(), &(authorities.clone(), [0;32])).await.is_none());
-		assert!(worker.claim_slot(&head, 5.into(), &(authorities.clone(), [0;32])).await.is_none());
-		assert!(worker.claim_slot(&head, 6.into(), &(authorities.clone(), [0;32])).await.is_none());
-		assert!(worker.claim_slot(&head, 7.into(), &(authorities, [0;32])).await.is_some());
+		// DRIEMWORKS::TODO should test dleq verification as well?
+		assert!(worker.claim_slot(&head, 0.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
+		assert!(worker.claim_slot(&head, 1.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
+		assert!(worker.claim_slot(&head, 2.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
+		assert!(worker.claim_slot(&head, 3.into(), &(authorities.clone(), [0;32], [0;48])).await.is_some());
+		assert!(worker.claim_slot(&head, 4.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
+		assert!(worker.claim_slot(&head, 5.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
+		assert!(worker.claim_slot(&head, 6.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
+		assert!(worker.claim_slot(&head, 7.into(), &(authorities, [0;32], [0;48])).await.is_some());
 	}
 
 	#[tokio::test]

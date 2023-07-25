@@ -1,3 +1,15 @@
-# Encryption to the Future Pallet
+# EtF Pallet
 
-License: MIT-0
+The EtF (Encryption to the Future) pallet enables EtF consensus when added to a runtime. It stores public parameters required for identity based encryption. In this initial version, parameters are set on genesis and only modifiable by the root node. Additionally, the pallet provides authority-management capabilities, with the root node have full control. In the future, we will modify this approach to require less trust.
+
+## Runtime Storage
+
+- `IBEParams`
+- `Validators`
+
+## Extrinsics
+
+
+
+## License
+GPLv3.0

@@ -5679,6 +5679,7 @@ dependencies = [
 name = "node-template"
 version = "4.0.0-dev"
 dependencies = [
+ "array-bytes 4.2.0",
  "clap 4.3.2",
  "etf-rpc",
  "frame-benchmarking",
@@ -6659,6 +6660,7 @@ dependencies = [
  "ark-scale 0.4.0-beta",
  "ark-serialize",
  "ark-std",
+ "array-bytes 4.2.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6669,6 +6671,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "scale-info",
  "sp-ark-bls12-381",
+ "sp-ark-models",
  "sp-core",
  "sp-crypto-ec-utils",
  "sp-inherents",

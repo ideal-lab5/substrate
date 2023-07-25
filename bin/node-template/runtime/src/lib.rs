@@ -231,30 +231,6 @@ impl pallet_grandpa::Config for Runtime {
 	type EquivocationReportSystem = ();
 }
 
-impl_opaque_keys! {
-	pub struct SessionKeys {
-		pub grandpa: Grandpa,
-		pub aura: Aura,
-	}
-}
-
-parameter_types! {
-	pub const Period: u32 = MINUTES;
-	pub const Offset: u32 = 0;
-}
-
-impl pallet_session::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	type ValidatorIdOf = pallet_etf::ValidatorOf<Self>;
-	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type SessionManager = Etf;
-	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type Keys = opaque::SessionKeys;
-	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
-}
-
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
@@ -310,7 +286,6 @@ impl pallet_etf::Config for Runtime {
 	type WeightInfo = pallet_etf::weights::SubstrateWeight<Runtime>;
 	type MaxAuthorities  = ConstU32<32>;
 	type Randomness = RandomnessCollectiveFlip;
-	type AuthorityId = pallet_etf::crypto::TestAuthId;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -387,7 +362,6 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
 		Etf: pallet_etf,
-		Session: pallet_session,
 		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
 	}
 );
@@ -526,6 +500,10 @@ impl_runtime_apis! {
 			// 	Ok(Some(secret)) => secret,
 			// 	_ => [0;32]
 			// }
+		}
+
+		fn ibe_params() -> Vec<u8> {
+			Etf::ibe_params()
 		}
 	}
 

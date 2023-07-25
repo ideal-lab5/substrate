@@ -1,4 +1,4 @@
-/// DLEQ Proof 
+/// DLEQ Proofs
 
 use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_std::{UniformRand, ops::Mul};
@@ -56,6 +56,7 @@ impl DLEQProof {
 /// * `x`: The secret (scalar)
 ///
 fn prepare_proof(x: Fr, d: K, q: K, g: K) -> DLEQProof {
+    // DRIEMWORKS::TODO determine a seed
     let mut rng = ChaCha20Rng::from_seed([2;32]);
     let r: Fr = Fr::rand(&mut rng);
     let commitment_1: K = g.mul(r).into();
@@ -142,21 +143,24 @@ mod tests {
         let mut rng = ChaCha20Rng::seed_from_u64(0u64);
         let x = Fr::rand(&mut rng);
         let g = K::generator();
+        let mut test = Vec::new();
+        g.serialize_compressed(&mut test).unwrap();
+        panic!("generator bytes {:?}", test);
         let (proof, d) = DLEQProof::new(&id, x, g);
         // valid proof
-        let mut validity = DLEQProof::verify(&id, d, proof.clone());
+        let validity = DLEQProof::verify(&id, d, proof.clone());
         assert!(validity == true);
         // valid proof but wrong id
         let bad_id = b"test_id_2".to_vec();
-        let mut validity = DLEQProof::verify(&bad_id, d, proof.clone());
+        let validity = DLEQProof::verify(&bad_id, d, proof.clone());
         assert!(validity == false);
         // valid proof but wrong slot secret
         let bad_slot_secret = K::rand(&mut rng);
-        let mut validity = DLEQProof::verify(&id, bad_slot_secret, proof);
+        let validity = DLEQProof::verify(&id, bad_slot_secret, proof);
         assert!(validity == false);
         // invalid proof but correct id and slot secret
         let (new_proof, new_d) = DLEQProof::new(&id, x, bad_slot_secret);
-        let mut validity = DLEQProof::verify(&id, d, new_proof);
+        let validity = DLEQProof::verify(&id, d, new_proof);
         assert!(validity == false);
     }
 }

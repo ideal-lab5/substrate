@@ -71,7 +71,6 @@ where
 
 	match check_result {
 		Ok((header, slot, seal)) => {
-			// DRIEMWORKS::TODO
 			let expected_author = crate::standalone::slot_author::<P>(slot.slot, &authorities);
 			let should_equiv_check = check_for_equivocation.check_for_equivocation();
 			if let (true, Some(expected)) = (should_equiv_check, expected_author) {
@@ -196,11 +195,7 @@ where
 
 		let hash = block.header.hash();
 		let parent_hash = *block.header.parent_hash();
-		// DRIEMWORKS::TODO
-		// let claim = find_pre_digest::<B, P::Signature>(&block.header)
-		// 	.map_err(|e| format!("Could not fetch predigest at {:?}: {}", parent_hash, e))?;
-		// let secret = claim.secret;
-		// log::info!("IMPORT QUEUE SECRET: {:?}", secret);
+
 		let authorities = authorities(
 			self.client.as_ref(),
 			parent_hash,

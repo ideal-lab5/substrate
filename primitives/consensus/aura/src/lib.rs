@@ -93,6 +93,10 @@ sp_api::decl_runtime_apis! {
 		fn authorities() -> Vec<AuthorityId>;
 
 		/// return the secret for the current slot
+		/// DRIEMWORKS::TODO change to Vec<u8> return type
 		fn secret() -> [u8;32];
+
+		/// return public params for identity based encryption (just a generator for now)
+		fn ibe_params() -> sp_std::vec::Vec<u8>;
 	}
 }
