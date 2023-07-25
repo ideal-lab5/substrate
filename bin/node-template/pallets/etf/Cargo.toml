@@ -1,7 +1,7 @@
 [package]
 name = "pallet-etf"
 version = "4.0.0-dev"
-description = "FRAME pallet to publish slot secrets"
+description = "FRAME pallet to store and manage IBE public params"
 authors = ["Ideal Labs <https://github.com/ideal-lab5>"]
 homepage = "https://idealabs.network"
 edition = "2021"
@@ -20,19 +20,10 @@ codec = { package = "parity-scale-codec", version = "3.2.2", default-features = 
 rand_chacha = { version = "0.3.1", default-features = false }
 
 sp-ark-bls12-381 = { version = "0.4.0-beta", features=["curve"], default-features = false }
-
-#sp-bls12-381 = { git = "https://github.com/paritytech/sp-curves.git", features = ["curve"], default-features = false }
 sp-ark-models = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", features = [ "derive" ], default-features = false }
-ark-ff = { version = "0.4.0", default-features = false }
-ark-ec = { version = "0.4.0", default-features = false }
-ark-std = { version = "0.4.0", default-features = false }
-ark-poly = { version = "0.4.0", default-features = false }
-ark-crypto-primitives = { version = "0.4.0", features = [ "r1cs", "snark" ], default-features = false } 
 ark-scale = { git = "https://github.com/w3f/ark-scale", features = ["hazmat"], default-features = false }
 ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
-# ark-snark = { version = "0.4.0", default-features = false }
-# ark-groth16 = { version = "0.4.0", features = [ "r1cs" ], default-features = false }
 sp-io = { version = "23.0.0", path = "../../../../primitives/io", default-features = false }
 primitive-types = { version = "0.12.1", default-features = false }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
@@ -40,22 +31,16 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/system" }
 
-pallet-session = { version = "4.0.0-dev", default-features = false, features = [
-	"historical",
-], path = "../../../../frame/session" }
-
-sp-inherents = { version = "4.0.0-dev", path = "../../../../primitives/inherents", default-features = false }
-sp-staking = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/staking", features = ["serde"] }
 sp-std = { version = "8.0.0", default-features = false, path = "../../../../primitives/std" }
 sp-runtime = { version = "24.0.0", default-features = false, path = "../../../../primitives/runtime" }
 sp-crypto-ec-utils = { version = "0.4.0", default-features = false, path = "../../../../primitives/crypto/ec-utils" }
 sp-core = { version = "21.0.0", path = "../../../../primitives/core", default-features = false }
-#sp-consensus-slots = { version = "0.10.0-dev", path = "../../../../primitives/consensus/slots", deafult-feature = false }
 
 [dev-dependencies]
 frame-support-test = { version = "3.0.0", path = "../../../../frame/support/test" }
 array-bytes = {version = "4.1", default-features = false }
 hex = "0.4"
+ark-std = { version = "0.4.0", default-features = false }
 
 [features]
 default = ["std"]
@@ -66,29 +51,17 @@ std = [
 	"frame-system/std",
 	"scale-info/std",
 	"primitive-types/std",
-	"sp-inherents/std",
-	"sp-staking/std",
 	"sp-std/std",
 	"sp-runtime/std",
 	"sp-io/std",
 	"sp-core/std",
-	#"sp-consensus-slots/std",
-	"pallet-session/std",
 	"rand_chacha/std",
 	"sp-ark-bls12-381/std",
 	"sp-crypto-ec-utils/std",
-	#"sp-bls12-381/std",
 	"sp-ark-models/std",
 	"ark-serialize/std",
-	"ark-ff/std",
-	"ark-ec/std",
-	"ark-std/std",
-	"ark-crypto-primitives/std",
 	"ark-scale/std",
-	"ark-poly/std",
 	"ark-bls12-381/std",
-	# "ark-snark/std",
-	# "ark-groth16/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
 try-runtime = ["frame-support/try-runtime"]

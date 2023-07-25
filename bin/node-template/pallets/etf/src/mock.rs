@@ -1,6 +1,6 @@
 use crate as pallet_etf;
 use frame_support::traits::{
-    ConstU16, ConstU32, ConstU64,
+    ConstU16, ConstU64,
     GenesisBuild,
 };
 use sp_core::H256;

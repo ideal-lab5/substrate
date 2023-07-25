@@ -16,22 +16,13 @@ mod benchmarking;
 pub mod weights;
 pub use weights::*;
 use codec::{Encode, Decode};
-use frame_system::offchain::{SendSignedTransaction, Signer, SubmitTransaction};
 use frame_support::{
 	pallet_prelude::*,
 	sp_std::prelude::ToOwned,
-	dispatch::Vec, BoundedSlice,
-	traits::{
-		Randomness,
-		ValidatorRegistration, ValidatorSet, ValidatorSetWithIdentification,
-	},
+	dispatch::Vec,
+	traits::Randomness,
 };
-use sp_runtime::{
-	KeyTypeId, DispatchResult,
-	traits::{Convert, TrailingZeroInput},
-	transaction_validity::{InvalidTransaction, TransactionValidity, ValidTransaction},
-	offchain::storage::StorageRetrievalError,
-};
+use sp_runtime::DispatchResult;
 
 use ark_serialize::CanonicalDeserialize;
 
@@ -45,14 +36,6 @@ pub mod pallet {
 	use sp_runtime::DispatchResult;
 	use frame_system::pallet_prelude::*; 	
 	use primitive_types::H256;
-	use frame_system::{
-		pallet_prelude::*,
-		offchain::{
-			Signer,
-			AppCrypto,
-			CreateSignedTransaction,
-		}
-	};
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
