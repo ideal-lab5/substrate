@@ -23,7 +23,6 @@ use std::fmt::Debug;
 use log::trace;
 
 use codec::Codec;
-
 use codec::{Encode, Decode};
 
 use sc_client_api::{backend::AuxStore, UsageProvider};
@@ -35,14 +34,12 @@ use sp_consensus_slots::Slot;
 use sp_core::crypto::{ByteArray, Pair};
 use sp_keystore::KeystorePtr;
 use sp_runtime::{
-	traits::{Block as BlockT, Header, NumberFor, Zero, TrailingZeroInput},
+	traits::{Block as BlockT, Header, NumberFor, Zero},
 	DigestItem,
 };
 use sp_consensus_aura::digests::PreDigest;
 use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
-use ark_std::{UniformRand, ops::Mul};
-use ark_ff::{PrimeField, fields::models::fp::Fp};
-use ark_ec::AffineRepr;
+use ark_ff::PrimeField;
 
 pub use sc_consensus_slots::check_equivocation;
 
@@ -54,10 +51,7 @@ use super::{
 	SlotDuration, 
 	LOG_TARGET,
 };
-use sha2::Digest;
-use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
-use ark_ff::BigInteger;
-use ark_bls12_381::{Fr, G2Projective};
+use ark_bls12_381::Fr;
 use crate::dleq::DLEQProof;
 
 type K = ark_bls12_381::G1Affine;
@@ -126,12 +120,13 @@ pub async fn claim_slot<B, P: Pair>(
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
+			// DRIEMWORKS::TODO should the block hash be used in the dleq proof too? 
 			let mut id = p.to_raw_vec();
 			let s = u64::from(slot);
 			id.append(&mut s.to_string().as_bytes().to_vec());
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
-			// I could get the generator from the runtime! that's what the EtF pallet does
-			let generator: K = convert_from_bytes::<K, 48>(g).unwrap();
+			let generator: K = convert_from_bytes::<K, 48>(g)
+				.expect("A generator of G1 should be known; qed;");
 			let (proof, d) = DLEQProof::new(&id, x, generator);
 			let pre_digest = PreDigest {
 				slot: slot, 
@@ -396,8 +391,7 @@ where
 // TODO: proper error handling
 /// a helper function to deserialize arkworks elements from bytes
 pub fn convert_from_bytes<E: CanonicalDeserialize, const N: usize>(bytes: &[u8; N]) -> Option<E> {
-	let k: E = E::deserialize_compressed(&bytes[..]).unwrap();
-	Some(k)
+	E::deserialize_compressed(&bytes[..]).ok()
 }
 
 // should it be an error instead?

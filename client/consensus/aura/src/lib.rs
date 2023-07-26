@@ -53,7 +53,6 @@ use sp_core::crypto::{Pair, Public};
 use sp_inherents::CreateInherentDataProviders;
 use sp_keystore::KeystorePtr;
 use sp_runtime::{
-	OpaqueExtrinsic,
 	traits::{Block as BlockT, Header, Member, NumberFor},
 };
 
@@ -382,8 +381,10 @@ where
 			self.client.as_ref(),
 			header.hash(), 
 		)?;
-		// DRIEMWORKS::TODO: justify unwrap
-		Ok((authorities, secret, ibe_params.try_into().unwrap()))
+		Ok((
+			authorities, secret, 
+			ibe_params.try_into().expect("A generator should be known; qed;"),
+		))
 	}
 
 	fn authorities_len(&self, authorities: &Self::AuxData) -> Option<usize> {
@@ -859,6 +860,10 @@ mod tests {
 
 	#[tokio::test]
 	async fn current_node_authority_should_claim_slot() {
+
+		let g = array_bytes::hex2bytes_unchecked(
+			"a191b705ef18a6e4e5bd4cc56de0b8f94b1f3c908f3e3fcbd4d1dc12eb85059be7e7d801edc1856c8cfbe6d63a681c1f");
+
 		let net = AuraTestNet::new(4);
 
 		let mut authorities = vec![
@@ -904,15 +909,17 @@ mod tests {
 			Default::default(),
 			Default::default(),
 		);
-		// DRIEMWORKS::TODO should test dleq verification as well?
+
+		/// error when non-deserailizable generator is provided
 		assert!(worker.claim_slot(&head, 0.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
-		assert!(worker.claim_slot(&head, 1.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
-		assert!(worker.claim_slot(&head, 2.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
-		assert!(worker.claim_slot(&head, 3.into(), &(authorities.clone(), [0;32], [0;48])).await.is_some());
-		assert!(worker.claim_slot(&head, 4.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
-		assert!(worker.claim_slot(&head, 5.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
-		assert!(worker.claim_slot(&head, 6.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
-		assert!(worker.claim_slot(&head, 7.into(), &(authorities, [0;32], [0;48])).await.is_some());
+		assert!(worker.claim_slot(&head, 0.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());
+		assert!(worker.claim_slot(&head, 1.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());
+		assert!(worker.claim_slot(&head, 2.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());
+		assert!(worker.claim_slot(&head, 3.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_some());
+		assert!(worker.claim_slot(&head, 4.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());
+		assert!(worker.claim_slot(&head, 5.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());
+		assert!(worker.claim_slot(&head, 6.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());
+		assert!(worker.claim_slot(&head, 7.into(), &(authorities, [0;32], g.try_into().unwrap())).await.is_some());
 	}
 
 	#[tokio::test]

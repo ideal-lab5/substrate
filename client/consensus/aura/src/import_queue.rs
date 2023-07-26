@@ -19,7 +19,7 @@
 //! Module implementing the logic for verifying and importing AuRa blocks.
 
 use crate::{
-	authorities, ibe_params, find_pre_digest, standalone::SealVerificationError, AuthorityId, CompatibilityMode, Error,
+	authorities, ibe_params, standalone::SealVerificationError, AuthorityId, CompatibilityMode, Error,
 	LOG_TARGET,
 };
 use codec::{Codec, Decode, Encode};

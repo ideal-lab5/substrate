@@ -1,16 +1,15 @@
 /// DLEQ Proofs
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
+use ark_serialize::CanonicalSerialize;
 use ark_std::{UniformRand, ops::Mul};
 use rand_chacha::{
 	ChaCha20Rng,
 	rand_core::SeedableRng,
 };
-use ark_ff::{PrimeField, fields::models::fp::Fp};
+use ark_ff::PrimeField;
 use ark_ec::AffineRepr;
 use sha2::Digest;
-use sha3::{ Shake128, digest::{Update, ExtendableOutput, XofReader}, };
-use ark_ff::BigInteger;
-use ark_bls12_381::{Fr, G2Projective};
+use sha3::digest::{Update, ExtendableOutput, XofReader};
+use ark_bls12_381::Fr;
 
 /// the type of the G1 group
 type K = ark_bls12_381::G1Affine;
@@ -145,7 +144,6 @@ mod tests {
         let g = K::generator();
         let mut test = Vec::new();
         g.serialize_compressed(&mut test).unwrap();
-        panic!("generator bytes {:?}", test);
         let (proof, d) = DLEQProof::new(&id, x, g);
         // valid proof
         let validity = DLEQProof::verify(&id, d, g, proof.clone());
