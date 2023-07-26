@@ -157,7 +157,7 @@ mod tests {
         let validity = DLEQProof::verify(&id, bad_slot_secret, g, proof);
         assert!(validity == false);
         // invalid proof but correct id and slot secret
-        let (new_proof, new_d) = DLEQProof::new(&id, x, bad_slot_secret);
+        let (new_proof, _) = DLEQProof::new(&id, x, bad_slot_secret);
         let validity = DLEQProof::verify(&id, d, g, new_proof);
         assert!(validity == false);
     }

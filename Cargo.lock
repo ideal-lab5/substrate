@@ -9242,6 +9242,7 @@ dependencies = [
  "ark-ff",
  "ark-serialize",
  "ark-std",
+ "array-bytes 6.1.0",
  "async-trait",
  "dleq_vrf",
  "futures",

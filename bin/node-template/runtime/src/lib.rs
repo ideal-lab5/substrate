@@ -8,20 +8,15 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use pallet_grandpa::AuthorityId as GrandpaId;
 use sp_api::impl_runtime_apis;
-use sp_consensus_aura::{
-	sr25519::AuthorityId as AuraId,
-	Slot,
-};
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	RuntimeAppPublic,
-	SaturatedConversion,
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdLookup, BlakeTwo256, Block as BlockT, ConvertInto, 
-		IdentifyAccount, NumberFor, OpaqueKeys, One, Verify, StaticLookup,
+		AccountIdLookup, BlakeTwo256, Block as BlockT, 
+		IdentifyAccount, NumberFor, One, Verify,
 	},
-	offchain::storage::StorageValueRef,
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
@@ -29,7 +24,7 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use codec::{alloc::string::ToString, Encode, Decode};
+use codec::{alloc::string::ToString};
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{

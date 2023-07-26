@@ -23,7 +23,6 @@ use std::fmt::Debug;
 use log::trace;
 
 use codec::Codec;
-use codec::{Encode, Decode};
 
 use sc_client_api::{backend::AuxStore, UsageProvider};
 use sp_api::{Core, ProvideRuntimeApi};
@@ -110,7 +109,7 @@ pub fn slot_author<P: Pair>(slot: Slot, authorities: &[AuthorityId<P>]) -> Optio
 /// with the public key of the slot author.
 pub async fn claim_slot<B, P: Pair>(
 	slot: Slot,
-	block_hash: B::Hash,
+	_block_hash: B::Hash,
 	authorities: &[AuthorityId<P>],
 	secret: &[u8;32],
 	g: &[u8;48],

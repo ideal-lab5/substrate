@@ -9,7 +9,6 @@ use sc_service::{error::Error as ServiceError, Configuration, TaskManager, WarpS
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
-use sp_runtime::offchain::storage::StorageValueRef;
 
 // Our native executor instance.
 pub struct ExecutorDispatch;

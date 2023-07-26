@@ -39,7 +39,6 @@ fn it_allows_root_to_update_generator() {
 				h_bytes,
 			)
 		);
-
 	});
 }
 
@@ -64,6 +63,5 @@ fn it_fails_to_update_generator_when_not_decodable() {
 			),
 			Error::<Test>::G1DecodingFailure,
 		);
-
 	});
 }

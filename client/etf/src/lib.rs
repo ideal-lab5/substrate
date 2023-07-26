@@ -5,13 +5,8 @@ use jsonrpsee::{
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{
-	generic::BlockId,
-	traits::{Block as BlockT, MaybeDisplay},
-};
+use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
-use codec::Codec;
-use sp_core::Bytes;
 pub use sp_consensus_etf::EtfApi as EtfRuntimeApi;
 
 type ResponseType = Vec<u8>;

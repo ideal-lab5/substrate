@@ -52,7 +52,8 @@ sp-externalities = { version = "0.19.0", default-features = false, path = "../..
 sp-debug-derive = { path = "../../primitives/debug-derive" }
 
 # 3rd party
-array-bytes = { version = "6.1", optional = true }
+#array-bytes = { version = "6.1", optional = true }
+array-bytes = { version = "6.1", default-features = false }
 log = { version = "0.4.17", default-features = false }
 serde = { version = "1.0.163", optional = true, features = ["derive"] }
 
@@ -72,7 +73,7 @@ default = [
 	"std",
 ]
 std = [
-	"array-bytes",
+	#"array-bytes",
 	"sp-application-crypto/std",
 	"sp-consensus-aura/std",
 	"sp-consensus-babe/std",

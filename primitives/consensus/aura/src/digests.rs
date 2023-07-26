@@ -30,8 +30,8 @@ use sp_runtime::{
 	RuntimeDebug, 
 	generic::DigestItem,
 };
-use sp_std::vec::Vec;
 
+// DRIEMWORKS::TODO
 /// ETF slot assignment pre-digest.
 #[derive(Clone, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct PreDigest {

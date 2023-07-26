@@ -623,7 +623,8 @@ impl_runtime_apis! {
 		}
 
 		fn ibe_params() -> Vec<u8> {
-			[3;48].into()
+			array_bytes::hex2bytes_unchecked(
+				"a191b705ef18a6e4e5bd4cc56de0b8f94b1f3c908f3e3fcbd4d1dc12eb85059be7e7d801edc1856c8cfbe6d63a681c1f")
 		}
 	}
 

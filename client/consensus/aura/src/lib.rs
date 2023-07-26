@@ -363,12 +363,11 @@ where
 		&mut self.block_import
 	}
 
-	fn aux_data(&self, header: &B::Header, slot: Slot) -> Result<Self::AuxData, ConsensusError> {
+	fn aux_data(&self, header: &B::Header, _slot: Slot) -> Result<Self::AuxData, ConsensusError> {
 		let secret = secret(
 			self.client.as_ref(),
 			header.hash(),
 			*header.number(),
-			slot,
 			&self.compatibility_mode,
 		)?;
 		let authorities = authorities(
@@ -407,7 +406,7 @@ where
 		).await
 	}
 
-	fn pre_digest_data(&self, slot: Slot, claim: &Self::Claim) -> Vec<sp_runtime::DigestItem> {
+	fn pre_digest_data(&self, _slot: Slot, claim: &Self::Claim) -> Vec<sp_runtime::DigestItem> {
 		vec![crate::standalone::pre_digest::<P>(claim.0.clone())]
 	}
 
@@ -580,7 +579,6 @@ fn secret<A, B, C>(
 	client: &C,
 	parent_hash: B::Hash,
 	context_block_number: NumberFor<B>,
-	context_slot_number: Slot,
 	compatibility_mode: &CompatibilityMode<NumberFor<B>>,
 ) -> Result<[u8;32], ConsensusError>
 where 
@@ -910,7 +908,7 @@ mod tests {
 			Default::default(),
 		);
 
-		/// error when non-deserailizable generator is provided
+		// returns None when non-deserailizable generator is provided
 		assert!(worker.claim_slot(&head, 0.into(), &(authorities.clone(), [0;32], [0;48])).await.is_none());
 		assert!(worker.claim_slot(&head, 0.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());
 		assert!(worker.claim_slot(&head, 1.into(), &(authorities.clone(), [0;32], g.clone().try_into().unwrap())).await.is_none());

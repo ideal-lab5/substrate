@@ -16,7 +16,6 @@ mod tests;
 mod benchmarking;
 pub mod weights;
 pub use weights::*;
-use codec::{Encode, Decode};
 use frame_support::{
 	pallet_prelude::*,
 	sp_std::prelude::ToOwned,
@@ -27,16 +26,15 @@ use sp_runtime::DispatchResult;
 
 use ark_serialize::CanonicalDeserialize;
 
-pub(crate) use ark_scale::hazmat::ArkScaleProjective;
-const HOST_CALL: ark_scale::Usage = ark_scale::HOST_CALL;
-pub(crate) type ArkScale<T> = ark_scale::ArkScale<T, HOST_CALL>;
+// pub(crate) use ark_scale::hazmat::ArkScaleProjective;
+// const HOST_CALL: ark_scale::Usage = ark_scale::HOST_CALL;
+// pub(crate) type ArkScale<T> = ark_scale::ArkScale<T, HOST_CALL>;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use sp_runtime::DispatchResult;
-	use frame_system::pallet_prelude::*; 	
-	use primitive_types::H256;
+	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -95,7 +93,7 @@ pub mod pallet {
 		///
 		/// * `g`: A hex-encoded generator of G1
 		///
-		#[pallet::weight(0)]
+		#[pallet::weight(100_00)]
 		pub fn update_ibe_params(
 			origin: OriginFor<T>,
 			g: Vec<u8>,
