@@ -24,7 +24,7 @@ pub struct DLEQProof {
     pub commitment_2: K,
 	/// the witness s = r + c*x
     pub witness: Fr,
-	/// secret * G (can probably remove...)
+	/// secret * G
     pub out: K,
 }
 

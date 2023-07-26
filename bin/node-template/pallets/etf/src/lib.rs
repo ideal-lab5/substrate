@@ -91,9 +91,10 @@ pub mod pallet {
 
 		/// update the public parameters needed for the IBE scheme
 		///
-		/// * `g`: A hex-encoded generator of G1
+		/// * `g`: A generator of G1
 		///
 		#[pallet::weight(100_00)]
+		#[pallet::call_index(1)]
 		pub fn update_ibe_params(
 			origin: OriginFor<T>,
 			g: Vec<u8>,
