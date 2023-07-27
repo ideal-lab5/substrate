@@ -13,17 +13,17 @@ repository = "https://github.com/ideal-lab5/substrate/"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+#array-bytes = "4.1"
 log = { version = "0.4.17", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.2.2", default-features = false, features = [
 	"derive",
 ] }
-rand_chacha = { version = "0.3.1", default-features = false }
-
-sp-ark-bls12-381 = { version = "0.4.0-beta", features=["curve"], default-features = false }
-sp-ark-models = { version = "0.4.0", default-features = false }
+#sp-ark-bls12-381 = { version = "0.4.0-beta", features=["curve"], default-features = false }
+#sp-ark-models = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", features = [ "derive" ], default-features = false }
-ark-scale = { git = "https://github.com/w3f/ark-scale", features = ["hazmat"], default-features = false }
+#ark-scale = { git = "https://github.com/w3f/ark-scale", features = ["hazmat"], default-features = false }
 ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+#ark-std = { version = "0.4.0", default-features = false }
 sp-io = { version = "23.0.0", path = "../../../../primitives/io", default-features = false }
 primitive-types = { version = "0.12.1", default-features = false }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
@@ -33,18 +33,19 @@ frame-system = { version = "4.0.0-dev", default-features = false, path = "../../
 
 sp-std = { version = "8.0.0", default-features = false, path = "../../../../primitives/std" }
 sp-runtime = { version = "24.0.0", default-features = false, path = "../../../../primitives/runtime" }
-sp-crypto-ec-utils = { version = "0.4.0", default-features = false, path = "../../../../primitives/crypto/ec-utils" }
+#sp-crypto-ec-utils = { version = "0.4.0", default-features = false, path = "../../../../primitives/crypto/ec-utils" }
 sp-core = { version = "21.0.0", path = "../../../../primitives/core", default-features = false }
+array-bytes = {version = "4.1", default-features = false, optional = true }
+#getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 frame-support-test = { version = "3.0.0", path = "../../../../frame/support/test" }
-array-bytes = {version = "4.1", default-features = false }
-hex = "0.4"
-ark-std = { version = "0.4.0", default-features = false }
+rand_chacha ="0.3.1"
 
 [features]
 default = ["std"]
 std = [
+	"array-bytes",
 	"codec/std",
 	"frame-benchmarking?/std",
 	"frame-support/std",
@@ -55,12 +56,12 @@ std = [
 	"sp-runtime/std",
 	"sp-io/std",
 	"sp-core/std",
-	"rand_chacha/std",
-	"sp-ark-bls12-381/std",
-	"sp-crypto-ec-utils/std",
-	"sp-ark-models/std",
+	#"sp-ark-bls12-381/std",
+	#"sp-crypto-ec-utils/std",
+	#"sp-ark-models/std",
 	"ark-serialize/std",
-	"ark-scale/std",
+	#"ark-scale/std",
+	#"ark-std/std",
 	"ark-bls12-381/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]

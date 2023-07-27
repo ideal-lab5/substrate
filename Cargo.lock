@@ -479,32 +479,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ark-scale"
-version = "0.4.0-beta"
-source = "git+https://github.com/w3f/ark-scale#b45db6711963b268e0566c8317c9b51e290c4516"
-dependencies = [
- "ark-ec",
- "ark-serialize",
- "ark-std",
- "parity-scale-codec",
-]
-
-[[package]]
-name = "ark-secret-scalar"
-version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf/#583242e34fb62001850178c29207a07dd84fff75"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "ark-transcript",
- "digest 0.10.7",
- "rand_core 0.6.4",
- "zeroize",
-]
-
-[[package]]
 name = "ark-serialize"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -535,19 +509,6 @@ checksum = "94893f1e0c6eeab764ade8dc4c0db24caf4fe7cbbaafc0eba0a9030f447b5185"
 dependencies = [
  "num-traits",
  "rand 0.8.5",
-]
-
-[[package]]
-name = "ark-transcript"
-version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf/#583242e34fb62001850178c29207a07dd84fff75"
-dependencies = [
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "digest 0.10.7",
- "rand_core 0.6.4",
- "sha3",
 ]
 
 [[package]]
@@ -2169,22 +2130,6 @@ name = "dissimilar"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "210ec60ae7d710bed8683e333e9d2855a8a56a3e9892b38bad3bb0d4d29b0d5e"
-
-[[package]]
-name = "dleq_vrf"
-version = "0.0.2"
-source = "git+https://github.com/w3f/ring-vrf/#583242e34fb62001850178c29207a07dd84fff75"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-secret-scalar",
- "ark-serialize",
- "ark-std",
- "ark-transcript",
- "arrayvec 0.7.2",
- "rand_core 0.6.4",
- "zeroize",
-]
 
 [[package]]
 name = "doc-comment"
@@ -5724,7 +5669,6 @@ dependencies = [
  "pallet-etf",
  "pallet-grandpa",
  "pallet-insecure-randomness-collective-flip",
- "pallet-session",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -6621,24 +6565,18 @@ name = "pallet-etf"
 version = "4.0.0-dev"
 dependencies = [
  "ark-bls12-381",
- "ark-scale 0.4.0-beta",
  "ark-serialize",
- "ark-std",
  "array-bytes 4.2.0",
  "frame-benchmarking",
  "frame-support",
  "frame-support-test",
  "frame-system",
- "hex",
  "log",
  "parity-scale-codec",
  "primitive-types",
  "rand_chacha 0.3.1",
  "scale-info",
- "sp-ark-bls12-381",
- "sp-ark-models",
  "sp-core",
- "sp-crypto-ec-utils",
  "sp-io",
  "sp-runtime",
  "sp-std",
@@ -9244,11 +9182,8 @@ dependencies = [
  "ark-std",
  "array-bytes 6.1.0",
  "async-trait",
- "dleq_vrf",
  "futures",
- "getrandom 0.2.9",
  "log",
- "num-bigint",
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "rand_chacha 0.3.1",
@@ -11004,7 +10939,7 @@ dependencies = [
  "ark-bls12-377",
  "ark-ff",
  "ark-r1cs-std",
- "ark-scale 0.0.3",
+ "ark-scale",
  "ark-std",
  "parity-scale-codec",
  "sp-ark-models",
@@ -11018,7 +10953,7 @@ checksum = "3352feef6c9c34022fa766a0c9a86a88a83d280a3e5b34781a1a9af98377a130"
 dependencies = [
  "ark-bls12-381",
  "ark-ff",
- "ark-scale 0.0.3",
+ "ark-scale",
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",
@@ -11033,7 +10968,7 @@ checksum = "2bf069165e230aef3c4680edea2d8ab3caa89c039e0b61fad2b8e061fb393668"
 dependencies = [
  "ark-bw6-761",
  "ark-ff",
- "ark-scale 0.0.3",
+ "ark-scale",
  "ark-std",
  "parity-scale-codec",
  "sp-ark-models",
@@ -11048,7 +10983,7 @@ dependencies = [
  "ark-ed-on-bls12-377",
  "ark-ff",
  "ark-r1cs-std",
- "ark-scale 0.0.3",
+ "ark-scale",
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",
@@ -11065,7 +11000,7 @@ dependencies = [
  "ark-ed-on-bls12-381-bandersnatch",
  "ark-ff",
  "ark-r1cs-std",
- "ark-scale 0.0.3",
+ "ark-scale",
  "ark-std",
  "parity-scale-codec",
  "sp-ark-bls12-381",
@@ -11333,7 +11268,7 @@ dependencies = [
  "ark-ed-on-bls12-377",
  "ark-ed-on-bls12-381-bandersnatch",
  "ark-ff",
- "ark-scale 0.0.3",
+ "ark-scale",
  "ark-serialize",
  "ark-std",
  "parity-scale-codec",

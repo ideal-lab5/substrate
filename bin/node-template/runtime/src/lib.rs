@@ -346,7 +346,7 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
 		[pallet_sudo, Sudo]
-		// [pallet_template, TemplateModule]
+		[pallet_etf, Etf]
 	);
 }
 
