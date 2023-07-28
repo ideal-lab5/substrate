@@ -93,7 +93,7 @@ pub mod pallet {
 		///
 		/// * `g`: A generator of G1
 		///
-		#[pallet::weight(100_00)]
+		#[pallet::weight(T::WeightInfo::update_ibe_params)]
 		#[pallet::call_index(1)]
 		pub fn update_ibe_params(
 			origin: OriginFor<T>,

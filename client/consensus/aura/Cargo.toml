@@ -13,22 +13,20 @@ readme = "README.md"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-sha3 = { version = "0.10.0", default-features = false }
 async-trait = "0.1.57"
 codec = { package = "parity-scale-codec", version = "3.2.2" }
 futures = "0.3.21"
 log = "0.4.17"
 thiserror = "1.0"
-#dleq_vrf = { git = 'https://github.com/w3f/ring-vrf/', default-features = false, features = ["getrandom"] }
-#getrandom = { version = "0.2", features = ["js"] }
 ark-ec = { version = "0.4.0", default-features = false }
 ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
 ark-ff = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", default-features = false }
 ark-std = { version = "0.4.0", default-features = false }
 sha2 = { version = "0.10.2", default-features = false }
+sha3 = { version = "0.10.0", default-features = false }
+getrandom = { version = "0.2", default-features = false, features = ["js"] }
 rand_chacha = { version = "0.3.1", default-features = false }
-#num-bigint = {version = "0.4.3", default-features = false}
 
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", version = "0.10.0-dev", path = "../../../utils/prometheus" }
 sc-block-builder = { version = "0.10.0-dev", path = "../../block-builder" }
