@@ -15,7 +15,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 pub mod weights;
-pub use weights::*;
+pub use weights::WeightInfo;
 use frame_support::{
 	pallet_prelude::*,
 	sp_std::prelude::ToOwned,
@@ -93,7 +93,7 @@ pub mod pallet {
 		///
 		/// * `g`: A generator of G1
 		///
-		#[pallet::weight(T::WeightInfo::update_ibe_params)]
+		#[pallet::weight(T::WeightInfo::update_ibe_params())]
 		#[pallet::call_index(1)]
 		pub fn update_ibe_params(
 			origin: OriginFor<T>,
