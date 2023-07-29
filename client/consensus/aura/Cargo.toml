@@ -48,6 +48,7 @@ sp-runtime = { version = "24.0.0", path = "../../../primitives/runtime" }
 
 [dev-dependencies]
 array-bytes = "6.1"
+hex = "0.4.3"
 parking_lot = "0.12.1"
 tempfile = "3.1.0"
 sc-keystore = { version = "4.0.0-dev", path = "../../keystore" }

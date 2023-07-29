@@ -136,6 +136,8 @@ mod tests {
         rand_core::SeedableRng,
     };
 
+    use ark_serialize::CanonicalDeserialize;
+
     #[test]
     fn dleq_prepare_and_verify_works() {
         let id = b"test_id_1".to_vec();
@@ -162,8 +164,28 @@ mod tests {
         assert!(validity == false);
     } 
 
-    // #[test]
-    // fn prove_secret_correctness__manual_testing_tool() {
-    //  
-    // }
+    #[test]
+    fn prove_secret_correctness_manual_testing_tool() {
+        // deserialize slot secret bytes to G1
+        let slot_secret_str = "0xaf7ea1cea2f862cda855ba7b7e338325cafdf264d0ad0b6190ce9593960934297d156d6ced5ad6cd8dd495faa94d6ac9";
+        let d_bytes = array_bytes::hex2bytes_unchecked(slot_secret_str);
+        let d = K::deserialize_compressed(&d_bytes[..]).unwrap();
+
+        // get the expected id and encode as point in G1
+        // subkey inspect 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+        // or check https://ss58.org/
+        let author = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d".to_string();
+        let id = "281774282";
+        let mut hex = array_bytes::hex2bytes_unchecked(author);
+        hex.append(&mut id.as_bytes().to_vec());
+        let pk = hash_to_g1(&hex);
+
+        // just hardcoded for testing purposes
+        let x_bytes = [2;32];
+        let x: Fr = Fr::from_be_bytes_mod_order(&x_bytes);
+
+        let d_actual: K = pk.mul(x).into();
+        assert!(d == d_actual);
+
+    }
 }

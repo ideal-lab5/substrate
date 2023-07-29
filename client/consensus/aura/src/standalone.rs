@@ -123,6 +123,7 @@ pub async fn claim_slot<B, P: Pair>(
 			let mut id = p.to_raw_vec();
 			let s = u64::from(slot);
 			id.append(&mut s.to_string().as_bytes().to_vec());
+			// or should we do convert_from_bytes?
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
 			let generator: K = convert_from_bytes::<K, 48>(g)
 				.expect("A generator of G1 should be known; qed;");
