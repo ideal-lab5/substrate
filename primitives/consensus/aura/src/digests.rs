@@ -31,7 +31,6 @@ use sp_runtime::{
 	generic::DigestItem,
 };
 
-// DRIEMWORKS::TODO
 /// ETF slot assignment pre-digest.
 #[derive(Clone, RuntimeDebug, Encode, Decode, MaxEncodedLen, TypeInfo)]
 pub struct PreDigest {

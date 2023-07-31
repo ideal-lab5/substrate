@@ -617,7 +617,6 @@ impl_runtime_apis! {
 			SubstrateTest::authorities().into_iter().map(|auth| AuraId::from(auth)).collect()
 		}
 
-		// DRIEMWORKS::TODO 
 		fn secret() -> [u8;32] {
 			[2;32]
 		}

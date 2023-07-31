@@ -96,6 +96,7 @@ where
 		Err(SealVerificationError::Unsealed) => Err(Error::HeaderUnsealed(hash)),
 		Err(SealVerificationError::BadSeal) => Err(Error::HeaderBadSeal(hash)),
 		Err(SealVerificationError::BadSignature) => Err(Error::BadSignature(hash)),
+		Err(SealVerificationError::InvalidDLEQProof) => Err(Error::InvalidDLEQProof(hash)),
 		Err(SealVerificationError::SlotAuthorNotFound) => Err(Error::SlotAuthorNotFound),
 		Err(SealVerificationError::InvalidPreDigest(e)) => Err(Error::from(e)),
 	}

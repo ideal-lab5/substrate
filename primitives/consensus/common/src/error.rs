@@ -50,6 +50,10 @@ pub enum Error {
 	/// Signing failed.
 	#[error("Failed to sign: {0}")]
 	CannotSign(String),
+	#[error("DLEQ Proof verification failed.")]
+	InvalidDLEQProof,
+	#[error("IBE secret lookup failed.")]
+	InvalidIBESecret,
 	/// Some other error.
 	#[error(transparent)]
 	Other(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),

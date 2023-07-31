@@ -440,7 +440,6 @@ impl_runtime_apis! {
 		}
 
 		fn secret() -> [u8;32] {
-			// Driemworks::TODO
 			// read master secret from somehwere else...
 			[2;32]
 			// let key = context_block_number.to_string();

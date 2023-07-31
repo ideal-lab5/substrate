@@ -39,6 +39,8 @@ use sp_runtime::{
 use sp_consensus_aura::digests::PreDigest;
 use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_ff::PrimeField;
+use ark_ec::AffineRepr;
+use ark_std::One;
 
 pub use sc_consensus_slots::check_equivocation;
 
@@ -55,7 +57,6 @@ use crate::dleq::DLEQProof;
 
 type K = ark_bls12_381::G1Affine;
 
-// DRIEMWORKS::TODO
 // type H2C = ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher::<
 //     <K as ark_ec::AffineRepr>::Group,
 //     ark_ff::fields::field_hashers::DefaultFieldHasher<sha2::Sha256>,
@@ -127,15 +128,15 @@ pub async fn claim_slot<B, P: Pair>(
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
 			let generator: K = convert_from_bytes::<K, 48>(g)
 				.expect("A generator of G1 should be known; qed;");
-			let (proof, d) = DLEQProof::new(&id, x, generator);
+			let (proof, d) = DLEQProof::new(*secret, &id, x, generator);
 			let pre_digest = PreDigest {
 				slot: slot, 
-				secret: convert_to_bytes::<K, 48>(d).try_into().unwrap(),
+				secret: convert_to_bytes::<K, 48>(d).try_into().expect("The slot secret should be valid; qed;"),
 				proof: (
-					convert_to_bytes::<K, 48>(proof.commitment_1).try_into().unwrap(),
-					convert_to_bytes::<K, 48>(proof.commitment_2).try_into().unwrap(),
-					convert_to_bytes::<Fr, 32>(proof.witness).try_into().unwrap(),
-					convert_to_bytes::<K, 48>(proof.out).try_into().unwrap(),
+					convert_to_bytes::<K, 48>(proof.commitment_1).try_into().expect("The proof should be valid; qed;"),
+					convert_to_bytes::<K, 48>(proof.commitment_2).try_into().expect("The proof should be valid; qed;"),
+					convert_to_bytes::<Fr, 32>(proof.witness).try_into().expect("The proof should be valid; qed;"),
+					convert_to_bytes::<K, 48>(proof.out).try_into().expect("The proof should be valid; qed;"),
 				),
 			};
 			Some((pre_digest.clone(), p.clone()))
@@ -316,6 +317,10 @@ pub enum SealVerificationError<Header> {
 	#[error("Header has a bad signature")]
 	BadSignature,
 
+	/// the DLEQ was not able to be verified
+	#[error("The DLEQ Proof is invalid")]
+	InvalidDLEQProof,
+
 	/// No slot author found.
 	#[error("No slot author for provided slot")]
 	SlotAuthorNotFound,
@@ -360,30 +365,36 @@ where
 		// verify the DLEQ proof
 		let expected_author =
 			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
+		let secret_bytes = claim.secret;
+
 		let mut id = expected_author.to_raw_vec();
 		let s = u64::from(slot);
 		id.append(&mut s.to_string().as_bytes().to_vec());
-		let secret_bytes = claim.secret;
-		// TODO: error handling...
-		let d: K = K::deserialize_compressed(&secret_bytes[..]).unwrap();
-		let pk: K = K::deserialize_compressed(&g[..]).unwrap();
+
+		let d: K = K::deserialize_compressed(&secret_bytes[..])
+			.map_err(|_| SealVerificationError::BadSignature)?;
+		let pk: K = K::deserialize_compressed(&g[..])
+			.expect("The runtime should contain a valid point in G1; qed;");
 		let p = claim.proof;
-		// DRIEMWORKS::TODO clean this up
+		// DRIEMWORKS:: This could be cleaned up but it's fine for now
 		let proof = DLEQProof {
-			commitment_1: convert_from_bytes::<K, 48>(&p.0).unwrap(),
-			commitment_2: convert_from_bytes::<K, 48>(&p.1).unwrap(),
-			witness: convert_from_bytes::<Fr, 32>(&p.2).unwrap(),
-			out: convert_from_bytes::<K, 48>(&p.3).unwrap(),
+			commitment_1: convert_from_bytes::<K, 48>(&p.0).ok_or(K::generator()).unwrap(),
+			commitment_2: convert_from_bytes::<K, 48>(&p.1).ok_or(K::generator()).unwrap(),
+			witness: convert_from_bytes::<Fr, 32>(&p.2).ok_or(Fr::one()).unwrap(),
+			out: convert_from_bytes::<K, 48>(&p.3).ok_or(K::generator()).unwrap(),
 		};
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let pre_hash = header.hash();
 
-		if DLEQProof::verify(&id, d, pk, proof) 
-			&& P::verify(&sig, pre_hash.as_ref(), expected_author) {
-			Ok((header, claim, seal))
+		if DLEQProof::verify(&id, d, pk, proof) {
+			if P::verify(&sig, pre_hash.as_ref(), expected_author) {
+				Ok((header, claim, seal))
+			} else {
+				Err(SealVerificationError::BadSignature)
+			}
 		} else {
-			Err(SealVerificationError::BadSignature)
+			Err(SealVerificationError::InvalidDLEQProof)
 		}
 	}
 }

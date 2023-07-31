@@ -36,10 +36,10 @@ impl DLEQProof {
     /// * `x`: The secret in the scalar field S (over which K is defined).
     /// * `g`: A group generator of K
     ///
-    pub fn new(id: &[u8], x: Fr, g: K) -> (Self, K) {
+    pub fn new(seed: [u8;32], id: &[u8], x: Fr, g: K) -> (Self, K) {
         let pk = hash_to_g1(&id);
         let d: K = pk.mul(x).into();
-        (prepare_proof(x, d, pk, g), d)
+        (prepare_proof(seed, x, d, pk, g), d)
     }
 
     /// verify a DLEQ Proof with a given id and slot secret
@@ -53,9 +53,8 @@ impl DLEQProof {
 /// 
 /// * `x`: The secret (scalar)
 ///
-fn prepare_proof(x: Fr, d: K, q: K, g: K) -> DLEQProof {
-    // DRIEMWORKS::TODO determine a seed
-    let mut rng = ChaCha20Rng::from_seed([2;32]);
+fn prepare_proof(seed: [u8;32], x: Fr, d: K, q: K, g: K) -> DLEQProof {
+    let mut rng = ChaCha20Rng::from_seed(seed);
     let r: Fr = Fr::rand(&mut rng);
     let commitment_1: K = g.mul(r).into();
     let commitment_2: K = q.mul(r).into();
@@ -146,7 +145,7 @@ mod tests {
         let g = K::generator();
         let mut test = Vec::new();
         g.serialize_compressed(&mut test).unwrap();
-        let (proof, d) = DLEQProof::new(&id, x, g);
+        let (proof, d) = DLEQProof::new([2;32], &id, x, g);
         // valid proof
         let validity = DLEQProof::verify(&id, d, g, proof.clone());
         assert!(validity == true);
@@ -159,7 +158,7 @@ mod tests {
         let validity = DLEQProof::verify(&id, bad_slot_secret, g, proof);
         assert!(validity == false);
         // invalid proof but correct id and slot secret
-        let (new_proof, _) = DLEQProof::new(&id, x, bad_slot_secret);
+        let (new_proof, _) = DLEQProof::new([2;32], &id, x, bad_slot_secret);
         let validity = DLEQProof::verify(&id, d, g, new_proof);
         assert!(validity == false);
     } 

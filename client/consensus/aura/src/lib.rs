@@ -508,6 +508,9 @@ pub enum Error<B: BlockT> {
 	/// Bad signature
 	#[error("Bad signature on {0:?}")]
 	BadSignature(B::Hash),
+	/// the dleq proof is invalid
+	#[error("Invalid DLEQ proof on {0:?}")]
+	InvalidDLEQProof(B::Hash),
 	/// Client Error
 	#[error(transparent)]
 	Client(sp_blockchain::Error),
@@ -608,10 +611,10 @@ where
 					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
 			},
 	}
-	// DRIEMWORKS::TODO : Add new error type
+	// DRIEMWORKS::TODO : Add new error type?
 	runtime_api
 		.secret(parent_hash).ok()
-		.ok_or(ConsensusError::InvalidAuthoritiesSet)
+		.ok_or(ConsensusError::InvalidIBESecret)
 }
 
 /// Load the current IBE generator from the runtime at a specific block.
