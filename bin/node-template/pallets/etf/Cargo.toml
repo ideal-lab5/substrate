@@ -23,7 +23,6 @@ codec = { package = "parity-scale-codec", version = "3.2.2", default-features = 
 ark-serialize = { version = "0.4.0", features = [ "derive" ], default-features = false }
 #ark-scale = { git = "https://github.com/w3f/ark-scale", features = ["hazmat"], default-features = false }
 ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
-#ark-std = { version = "0.4.0", default-features = false }
 sp-io = { version = "23.0.0", path = "../../../../primitives/io", default-features = false }
 primitive-types = { version = "0.12.1", default-features = false }
 scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
@@ -41,6 +40,8 @@ sp-core = { version = "21.0.0", path = "../../../../primitives/core", default-fe
 [dev-dependencies]
 frame-support-test = { version = "3.0.0", path = "../../../../frame/support/test" }
 rand_chacha ="0.3.1"
+ark-std = { version = "0.4.0", default-features = false }
+hex = "0.4.3"
 
 [features]
 default = ["std"]

@@ -42,12 +42,15 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	log,
 	traits::{DisabledValidators, FindAuthor, Get, OnTimestampSet, OneSessionHandler},
+	traits::{
+		Currency, LockableCurrency, ReservableCurrency,
+	},
 	BoundedSlice, BoundedVec, ConsensusEngineId, Parameter,
 };
 use sp_consensus_aura::{AuthorityIndex, ConsensusLog, Slot, AURA_ENGINE_ID};
 use sp_runtime::{
 	generic::DigestItem,
-	traits::{IsMember, Member, SaturatedConversion, Saturating, Zero},
+	traits::{Convert, IsMember, Member, SaturatedConversion, Saturating, Zero},
 	RuntimeAppPublic,
 };
 use sp_std::prelude::*;
@@ -95,7 +98,19 @@ pub mod pallet {
 		/// another pallet which enforces some limitation on the number of blocks authors can create
 		/// using the same slot.
 		type AllowMultipleBlocksPerSlot: Get<bool>;
+
+		/// Type to access the Balances Pallet for AuthorityId
+		type Currency: Currency<Self::AccountId>
+			+ ReservableCurrency<Self::AccountId>
+			+ LockableCurrency<Self::AccountId>;
+
+			
+		/// A conversion which takes an authority id, and returns the associated account id.
+		type AuthorityToAccount: Convert<Self::AuthorityId, Self::AccountId>;
 	}
+
+	// pub type BalanceOf<T> =
+	// 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(sp_std::marker::PhantomData<T>);
@@ -249,6 +264,13 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 						"next authorities list larger than {}, truncating",
 						T::MaxAuthorities::get(),
 					);
+				}
+				// award each authority with 10 tokens
+				for a in next_authorities.iter() {
+					let _ =
+						T::Currency::deposit_into_existing(
+							&T::AuthorityToAccount::convert(a.clone()), 
+							10u32.into());
 				}
 				let bounded = <BoundedVec<_, T::MaxAuthorities>>::truncate_from(next_authorities);
 				Self::change_authorities(bounded);

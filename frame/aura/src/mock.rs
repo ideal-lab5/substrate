@@ -103,11 +103,40 @@ impl DisabledValidators for MockDisabledValidators {
 	}
 }
 
+
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+	pub const MaxLocks: u32 = 10;
+}
+impl pallet_balances::Config for Test {
+	type Balance = u128;
+	type DustRemoval = ();
+	type RuntimeEvent = RuntimeEvent;
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+}
+
+
+pub struct AuthorityToAccount;
+
+impl Convert<AuthorityId, AccountId> for AuthorityToAccount {
+	fn convert(authority: AuthorityId) -> AccountId {
+		// This is some test code, not super accurate for real runtimes.
+		Decode::decode(&mut &authority.encode()[..]).unwrap()
+	}
+}
+
 impl pallet_aura::Config for Test {
 	type AuthorityId = AuthorityId;
 	type DisabledValidators = MockDisabledValidators;
 	type MaxAuthorities = ConstU32<10>;
 	type AllowMultipleBlocksPerSlot = AllowMultipleBlocksPerSlot;
+	type Currency = Balances;
+	type AuthorityToAccount = AuthorityToAccount;
 }
 
 pub fn new_test_ext(authorities: Vec<u64>) -> sp_io::TestExternalities {

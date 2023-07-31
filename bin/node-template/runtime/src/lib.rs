@@ -15,11 +15,12 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdLookup, BlakeTwo256, Block as BlockT, 
-		IdentifyAccount, NumberFor, One, Verify,
+		IdentifyAccount, NumberFor, One, Verify, Convert,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
+use codec::{Encode, Decode};
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -208,11 +209,24 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+pub struct AuthorityToAccount;
+
+impl Convert<AuraId, AccountId> for AuthorityToAccount {
+	fn convert(authority: AuraId) -> AccountId {
+		// The proper way to handle this is with Session + Aura + Authorship pallets.
+		// But this is good enough.
+		Decode::decode(&mut &authority.encode()[..])
+			.expect("We expect every authority id from aura to be the same an an account id.")
+	}
+}
+
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
 	type AllowMultipleBlocksPerSlot = ConstBool<false>;
+	type Currency = Balances;
+	type AuthorityToAccount = AuthorityToAccount;
 }
 
 impl pallet_grandpa::Config for Runtime {

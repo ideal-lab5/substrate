@@ -54,7 +54,7 @@ impl frame_system::Config for Test {
 
 impl pallet_etf::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = pallet_etf::weights::SubstrateWeightInfo<Test>;
     type Randomness = TestRandomness<Self>;
 }
 
