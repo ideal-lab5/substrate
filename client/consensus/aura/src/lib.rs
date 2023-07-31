@@ -611,7 +611,6 @@ where
 					.map_err(|_| ConsensusError::InvalidAuthoritiesSet)?;
 			},
 	}
-	// DRIEMWORKS::TODO : Add new error type?
 	runtime_api
 		.secret(parent_hash).ok()
 		.ok_or(ConsensusError::InvalidIBESecret)
