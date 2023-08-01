@@ -5,7 +5,7 @@ description = "FRAME pallet to store and manage IBE public params"
 authors = ["Ideal Labs <https://github.com/ideal-lab5>"]
 homepage = "https://idealabs.network"
 edition = "2021"
-license = "MIT-0"
+license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
 publish = false
 repository = "https://github.com/ideal-lab5/substrate/"
 
