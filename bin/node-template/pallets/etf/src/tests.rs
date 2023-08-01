@@ -1,4 +1,4 @@
-use crate::{mock::*, Error, Event};
+use crate::{mock::*, Error};
 use ark_std::{test_rng, UniformRand};
 use ark_serialize::CanonicalSerialize;
 use frame_support::{assert_noop, assert_ok};
