@@ -30,8 +30,6 @@ frame-system = { version = "4.0.0-dev", default-features = false, path = "../../
 sp-std = { version = "8.0.0", default-features = false, path = "../../../../primitives/std" }
 sp-runtime = { version = "24.0.0", default-features = false, path = "../../../../primitives/runtime" }
 sp-core = { version = "21.0.0", path = "../../../../primitives/core", default-features = false }
-#array-bytes = {version = "4.1", default-features = false, optional = true }
-#getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 frame-support-test = { version = "3.0.0", path = "../../../../frame/support/test" }
