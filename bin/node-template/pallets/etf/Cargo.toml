@@ -18,10 +18,7 @@ log = { version = "0.4.17", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.2.2", default-features = false, features = [
 	"derive",
 ] }
-#sp-ark-bls12-381 = { version = "0.4.0-beta", features=["curve"], default-features = false }
-#sp-ark-models = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.0", features = [ "derive" ], default-features = false }
-#ark-scale = { git = "https://github.com/w3f/ark-scale", features = ["hazmat"], default-features = false }
 ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
 sp-io = { version = "23.0.0", path = "../../../../primitives/io", default-features = false }
 primitive-types = { version = "0.12.1", default-features = false }
@@ -32,7 +29,6 @@ frame-system = { version = "4.0.0-dev", default-features = false, path = "../../
 
 sp-std = { version = "8.0.0", default-features = false, path = "../../../../primitives/std" }
 sp-runtime = { version = "24.0.0", default-features = false, path = "../../../../primitives/runtime" }
-#sp-crypto-ec-utils = { version = "0.4.0", default-features = false, path = "../../../../primitives/crypto/ec-utils" }
 sp-core = { version = "21.0.0", path = "../../../../primitives/core", default-features = false }
 #array-bytes = {version = "4.1", default-features = false, optional = true }
 #getrandom = { version = "0.2", features = ["js"] }
@@ -57,12 +53,7 @@ std = [
 	"sp-runtime/std",
 	"sp-io/std",
 	"sp-core/std",
-	#"sp-ark-bls12-381/std",
-	#"sp-crypto-ec-utils/std",
-	#"sp-ark-models/std",
 	"ark-serialize/std",
-	#"ark-scale/std",
-	#"ark-std/std",
 	"ark-bls12-381/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
