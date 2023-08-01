@@ -120,23 +120,26 @@ pub async fn claim_slot<B, P: Pair>(
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
-			// DRIEMWORKS::TODO should the block hash be used in the dleq proof too? 
 			let mut id = p.to_raw_vec();
 			let s = u64::from(slot);
 			id.append(&mut s.to_string().as_bytes().to_vec());
-			// or should we do convert_from_bytes?
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
 			let generator: K = convert_from_bytes::<K, 48>(g)
 				.expect("A generator of G1 should be known; qed;");
 			let (proof, d) = DLEQProof::new(*secret, &id, x, generator);
 			let pre_digest = PreDigest {
 				slot: slot, 
-				secret: convert_to_bytes::<K, 48>(d).try_into().expect("The slot secret should be valid; qed;"),
+				secret: convert_to_bytes::<K, 48>(d)
+					.try_into().expect("The slot secret should be valid; qed;"),
 				proof: (
-					convert_to_bytes::<K, 48>(proof.commitment_1).try_into().expect("The proof should be valid; qed;"),
-					convert_to_bytes::<K, 48>(proof.commitment_2).try_into().expect("The proof should be valid; qed;"),
-					convert_to_bytes::<Fr, 32>(proof.witness).try_into().expect("The proof should be valid; qed;"),
-					convert_to_bytes::<K, 48>(proof.out).try_into().expect("The proof should be valid; qed;"),
+					convert_to_bytes::<K, 48>(proof.commitment_1)
+						.try_into().expect("The proof should be valid; qed;"),
+					convert_to_bytes::<K, 48>(proof.commitment_2)
+						.try_into().expect("The proof should be valid; qed;"),
+					convert_to_bytes::<Fr, 32>(proof.witness)
+						.try_into().expect("The proof should be valid; qed;"),
+					convert_to_bytes::<K, 48>(proof.out)
+						.try_into().expect("The proof should be valid; qed;"),
 				),
 			};
 			Some((pre_digest.clone(), p.clone()))
