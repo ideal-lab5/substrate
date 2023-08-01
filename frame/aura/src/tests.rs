@@ -21,10 +21,8 @@
 
 use crate::mock::{new_test_ext, Aura, MockDisabledValidators, System};
 use codec::Encode;
-use frame_support::{
-	traits::OnInitialize,
-	pallet_prelude::ConstU32, BoundedVec,
-};
+use frame_support::traits::OnInitialize;
+
 use sp_consensus_aura::{Slot, AURA_ENGINE_ID};
 use sp_runtime::{Digest, DigestItem};
 
