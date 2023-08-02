@@ -21,6 +21,8 @@
 
 use codec::Encode;
 use sp_runtime::traits::IdentityLookup;
+use frame_support::parameter_types;
+use sp_version::RuntimeVersion;
 
 type AccountId = u64;
 type AccountIndex = u32;
@@ -39,6 +41,20 @@ frame_support::construct_runtime!(
 	}
 );
 
+
+parameter_types! {
+	pub Version: RuntimeVersion = RuntimeVersion {
+		spec_name: sp_version::create_runtime_str!("spec_name"),
+		impl_name: sp_version::create_runtime_str!("system-test"),
+		authoring_version: 1,
+		spec_version: 1,
+		impl_version: 1,
+		apis: sp_version::create_apis_vec!([]),
+		transaction_version: 1,
+		state_version: 1,
+	};
+}
+
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
@@ -55,7 +71,7 @@ impl frame_system::Config for Test {
 	type Header = sp_runtime::testing::Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ();
-	type Version = ();
+	type Version = Version;
 	type PalletInfo = PalletInfo;
 	type AccountData = ();
 	type OnNewAccount = ();
