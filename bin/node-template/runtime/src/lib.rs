@@ -243,7 +243,7 @@ impl pallet_grandpa::Config for Runtime {
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
-	type OnTimestampSet = Aura;
+	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<{ SLOT_DURATION / 2 }>;
 	type WeightInfo = ();
 }
@@ -452,7 +452,7 @@ impl_runtime_apis! {
 		}
 
 		fn ibe_params() -> Vec<u8> {
-			Etf::ibe_params()
+			Etf::ibe_params().0
 		}
 	}
 

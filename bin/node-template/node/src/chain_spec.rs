@@ -160,6 +160,10 @@ fn testnet_genesis(
 		etf: EtfConfig {
 			initial_ibe_params: array_bytes::hex2bytes_unchecked(
 				"a191b705ef18a6e4e5bd4cc56de0b8f94b1f3c908f3e3fcbd4d1dc12eb85059be7e7d801edc1856c8cfbe6d63a681c1f"),
+			initial_ibe_pp: array_bytes::hex2bytes_unchecked(
+				"93e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8"),
+			initial_ibe_commitment: array_bytes::hex2bytes_unchecked(
+				"b59c88bafc86ecc5043b1ab1e6d2ba81f29318a52a4bcd31f47248c88e27373f8be07894c8ba58353df8b3febf8e28011317199faae08cea851aa16ba00761a0960b97cb26ca9b36d46d26acace64214107f5eec7d91789eb77a0f130a40db49"),
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.

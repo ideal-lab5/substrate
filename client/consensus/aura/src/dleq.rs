@@ -185,6 +185,5 @@ mod tests {
 
         let d_actual: K = pk.mul(x).into();
         assert!(d == d_actual);
-
     }
 }

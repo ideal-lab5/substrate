@@ -51,10 +51,11 @@ pub mod pallet {
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
-	/// public params for ibe
+	/// this value is only used in DLEQ proofs
+	/// in fact, I think I'll remove it...
 	#[pallet::storage]
 	pub type IBEParams<T: Config> = StorageValue<
-		_, Vec<u8>, ValueQuery,
+		_, (Vec<u8>, Vec<u8>, Vec<u8>), ValueQuery,
 	>;
 
 	#[pallet::event]
@@ -69,6 +70,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// the vector could not be decoded to an element of G1
 		G1DecodingFailure,
+		G2DecodingFailure,
 	}
 
 	#[pallet::genesis_config]
@@ -76,12 +78,15 @@ pub mod pallet {
 	pub struct GenesisConfig {
 		// SCALE encoded?
 		pub initial_ibe_params: Vec<u8>,
+		pub initial_ibe_pp: Vec<u8>,
+		pub initial_ibe_commitment: Vec<u8>, 
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
-			Pallet::<T>::set_ibe_params(&self.initial_ibe_params)
+			Pallet::<T>::set_ibe_params(
+				&self.initial_ibe_params, &self.initial_ibe_pp, &self.initial_ibe_commitment)
 				.expect("The input should be a valid generator of G1; qed");
 		}
 	}
@@ -98,9 +103,11 @@ pub mod pallet {
 		pub fn update_ibe_params(
 			origin: OriginFor<T>,
 			g: Vec<u8>,
+			ibe_pp_bytes: Vec<u8>,
+			ibe_commitment_bytes: Vec<u8>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			Self::set_ibe_params(&g)?;
+			Self::set_ibe_params(&g, &ibe_pp_bytes, &ibe_commitment_bytes)?;
 			Self::deposit_event(Event::IBEParamsUpdated);
 			Ok(())
 		}
@@ -114,19 +121,26 @@ impl<T: Config> Pallet<T> {
 	///
 	/// `g`: A compressed and serialized element of G1
 	///
-	fn set_ibe_params(g: &Vec<u8>) -> DispatchResult {
+	/// TODO: should also provide a DLEQ proof and verify it here
+	fn set_ibe_params(g: &Vec<u8>, ibe_pp_bytes: &Vec<u8>, ibe_commitment_bytes: &Vec<u8>) -> DispatchResult {
 		let _ = 
 			ark_bls12_381::G1Affine::deserialize_compressed(&g[..])
 			.map_err(|_| Error::<T>::G1DecodingFailure)?;
+		let _ = 
+			ark_bls12_381::G2Affine::deserialize_compressed(&ibe_pp_bytes[..])
+			.map_err(|_| Error::<T>::G2DecodingFailure)?;
+		let _ = 
+			ark_bls12_381::G2Affine::deserialize_compressed(&ibe_commitment_bytes[..])
+			.map_err(|_| Error::<T>::G2DecodingFailure)?;
 		// let _ = <ArkScale<Vec<ark_bls12_381::G1Affine>> as Decode>::
 		// 	decode(&mut g.as_slice())
 		// 	.map_err(|_| Error::<T>::G1DecodingFailure)?;
-		IBEParams::<T>::set(g.to_owned());
+		IBEParams::<T>::set((g.to_owned(), ibe_pp_bytes.to_owned(), ibe_commitment_bytes.to_owned()));
 		Ok(())
 	}
 
 	/// fetch the current ibe params
-	pub fn ibe_params() -> Vec<u8> {
+	pub fn ibe_params() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 		IBEParams::<T>::get()
 	}
 }

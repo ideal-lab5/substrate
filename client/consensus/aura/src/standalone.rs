@@ -120,9 +120,10 @@ pub async fn claim_slot<B, P: Pair>(
 	let expected_author = slot_author::<P>(slot, authorities);
 	let public = expected_author.and_then(|p| {
 		if keystore.has_keys(&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)]) {
-			let mut id = p.to_raw_vec();
+			// let mut id = p.to_raw_vec();
 			let s = u64::from(slot);
-			id.append(&mut s.to_string().as_bytes().to_vec());
+			let id = s.to_string().as_bytes().to_vec();
+			// id.append(&mut s.to_string().as_bytes().to_vec());
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
 			let generator: K = convert_from_bytes::<K, 48>(g)
 				.expect("A generator of G1 should be known; qed;");
@@ -370,9 +371,9 @@ where
 			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
 		let secret_bytes = claim.secret;
 
-		let mut id = expected_author.to_raw_vec();
+		// let mut id = expected_author.to_raw_vec();
 		let s = u64::from(slot);
-		id.append(&mut s.to_string().as_bytes().to_vec());
+		let id = s.to_string().as_bytes().to_vec();
 
 		let d: K = K::deserialize_compressed(&secret_bytes[..])
 			.map_err(|_| SealVerificationError::BadSignature)?;
