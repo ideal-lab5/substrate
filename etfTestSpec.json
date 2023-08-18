@@ -15,7 +15,7 @@
       "aura": {
         "authorities": [
           "5Hpnyu4XgURGSvQM1ryMjMMTtKXKBQojd5gN4LxbhSA6cTPx",
-          "5FStXGFJdS7yATMc8fiykdeaTLVNdmKwBDESMCW54ifVox3b"
+          "5FXCoQ3NexPbaT82m4Pe8LWQPkUXA1GJ56L2Xqkh6AskaDt4"
         ]
       },
       "grandpa": {
@@ -25,7 +25,7 @@
             1
           ],
           [
-            "5GoNkf6WdbxCFnPdAnYYQyCjAKPJgLNxXwPjwTh6DGg6gN3E",
+            "5FStXGFJdS7yATMc8fiykdeaTLVNdmKwBDESMCW54ifVox3b",
             1
           ]
         ]
