@@ -2,9 +2,7 @@
   "name": "Local Testnet",
   "id": "local_testnet",
   "chainType": "Local",
-  "bootNodes": [
-    "/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWGh9bAi2BNy4XHUUH6v8HTkKULxAf87JYqRu6aLP7dGsa"
-  ],
+  "bootNodes": [],
   "telemetryEndpoints": null,
   "protocolId": null,
   "properties": null,
@@ -16,18 +14,18 @@
       },
       "aura": {
         "authorities": [
-          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+          "5Hpnyu4XgURGSvQM1ryMjMMTtKXKBQojd5gN4LxbhSA6cTPx",
           "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
         ]
       },
       "grandpa": {
         "authorities": [
           [
-            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            "5C5FipxTAHPJn6a1968Bxs3LorePkwMz7xrNnWb7xiz9Vy8v",
             1
           ],
           [
-            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            "5GoNkf6WdbxCFnPdAnYYQyCjAKPJgLNxXwPjwTh6DGg6gN3E",
             1
           ]
         ]
@@ -35,7 +33,7 @@
       "balances": {
         "balances": [
           [
-            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            "5Hpnyu4XgURGSvQM1ryMjMMTtKXKBQojd5gN4LxbhSA6cTPx",
             1152921504606846976
           ],
           [
