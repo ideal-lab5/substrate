@@ -1,8 +1,9 @@
 {
-  "name": "Local Testnet",
-  "id": "local_testnet",
-  "chainType": "Local",
-  "bootNodes": [],
+  "name": "Etf Testnet",
+  "id": "etf_testnet",
+  "chainType": "Development",
+  "bootNodes": [
+  ],
   "telemetryEndpoints": null,
   "protocolId": null,
   "properties": null,
@@ -14,18 +15,18 @@
       },
       "aura": {
         "authorities": [
-          "5Hpnyu4XgURGSvQM1ryMjMMTtKXKBQojd5gN4LxbhSA6cTPx",
-          "5FXCoQ3NexPbaT82m4Pe8LWQPkUXA1GJ56L2Xqkh6AskaDt4"
+          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
         ]
       },
       "grandpa": {
         "authorities": [
           [
-            "5C5FipxTAHPJn6a1968Bxs3LorePkwMz7xrNnWb7xiz9Vy8v",
+            "5FA9nQDVg267DEd8m1ZypXLBnvN7SFxYwV7ndqSYGiN9TTpu",
             1
           ],
           [
-            "5FStXGFJdS7yATMc8fiykdeaTLVNdmKwBDESMCW54ifVox3b",
+            "5GoNkf6WdbxCFnPdAnYYQyCjAKPJgLNxXwPjwTh6DGg6gN3E",
             1
           ]
         ]
@@ -33,11 +34,11 @@
       "balances": {
         "balances": [
           [
-            "5Hpnyu4XgURGSvQM1ryMjMMTtKXKBQojd5gN4LxbhSA6cTPx",
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
             1152921504606846976
           ],
           [
-            "5FXCoQ3NexPbaT82m4Pe8LWQPkUXA1GJ56L2Xqkh6AskaDt4",
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
             1152921504606846976
           ],
           [
