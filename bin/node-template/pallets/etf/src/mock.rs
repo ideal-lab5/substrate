@@ -60,15 +60,19 @@ impl pallet_etf::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext(
-    hex: &str,
+    g1_hex: &str,
+	g2_hex: &str,
 ) -> sp_io::TestExternalities {
 
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-    let ibe_pps: Vec<u8> = array_bytes::hex2bytes_unchecked(hex);
+    let ibe_g1: Vec<u8> = array_bytes::hex2bytes_unchecked(g1_hex);
+	let ibe_g2: Vec<u8> = array_bytes::hex2bytes_unchecked(g2_hex);
 
     GenesisBuild::<Test>::assimilate_storage(
         &pallet_etf::GenesisConfig {
-            initial_ibe_params: ibe_pps,
+            initial_ibe_params: ibe_g1.clone(),
+			initial_ibe_pp: ibe_g2.clone(),
+			initial_ibe_commitment: ibe_g2.clone(),
         },
         &mut t,
     ).unwrap();
