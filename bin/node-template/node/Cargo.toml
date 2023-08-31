@@ -57,6 +57,7 @@ sp-block-builder = { version = "4.0.0-dev", path = "../../../primitives/block-bu
 sc-basic-authorship = { version = "0.10.0-dev", path = "../../../client/basic-authorship" }
 substrate-frame-rpc-system = { version = "4.0.0-dev", path = "../../../utils/frame/rpc/system" }
 pallet-transaction-payment-rpc = { version = "4.0.0-dev", path = "../../../frame/transaction-payment/rpc/" }
+#pallet-contracts-rpc = { version = "4.0.0-dev", path = "../../../frame/contracts/rpc/", branch = "polkadot-v0.9.23" }
 etf-rpc = { version = "0.10.0", path = "../../../client/etf" }
 
 # These dependencies are used for runtime benchmarking
@@ -65,6 +66,8 @@ frame-benchmarking-cli = { version = "4.0.0-dev", path = "../../../utils/frame/b
 
 # Local Dependencies
 node-template-runtime = { version = "4.0.0-dev", path = "../runtime" }
+
+pallet-contracts = { version = "4.0.0-dev", default-features = false, path = "../../../frame/contracts" }
 
 # CLI-specific dependencies
 try-runtime-cli = { version = "0.10.0-dev", optional = true, path = "../../../utils/frame/try-runtime/cli" }
