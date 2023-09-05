@@ -39,8 +39,6 @@ use sp_runtime::{
 use sp_consensus_aura::digests::PreDigest;
 use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_ff::PrimeField;
-use ark_ec::AffineRepr;
-use ark_std::One;
 
 pub use sc_consensus_slots::check_equivocation;
 
@@ -53,15 +51,18 @@ use super::{
 	LOG_TARGET,
 };
 use ark_bls12_381::Fr;
-use crate::dleq::DLEQProof;
+
+use rand_chacha::{
+	ChaCha20Rng,
+	rand_core::SeedableRng,
+};
+
+use crypto::{
+	utils::{convert_from_bytes, hash_to_g1},
+	proofs::dleq::DLEQProof
+};
 
 type K = ark_bls12_381::G1Affine;
-
-// type H2C = ark_ec::hashing::map_to_curve_hasher::MapToCurveBasedHasher::<
-//     <K as ark_ec::AffineRepr>::Group,
-//     ark_ff::fields::field_hashers::DefaultFieldHasher<sha2::Sha256>,
-//     ark_ec::hashing::curve_maps::wb::WBMap<ark_bls12_381::g1::Config>,
-// >;
 
 /// Get the slot duration for Aura by reading from a runtime API at the best block's state.
 pub fn slot_duration<A, B, C>(client: &C) -> CResult<SlotDuration>
@@ -124,24 +125,21 @@ pub async fn claim_slot<B, P: Pair>(
 			let s = u64::from(slot);
 			let id = s.to_string().as_bytes().to_vec();
 			// id.append(&mut s.to_string().as_bytes().to_vec());
+			// the IBE master secret key
 			let x: Fr = Fr::from_be_bytes_mod_order(secret);
 			let generator: K = convert_from_bytes::<K, 48>(g)
 				.expect("A generator of G1 should be known; qed;");
-			let (proof, d) = DLEQProof::new(*secret, &id, x, generator);
+			let pk = hash_to_g1(&id);
+			// DRIEMWORKS TODO Q: how should we get our randomness?
+			// This will be fine for now... should use a vrf?
+			let rng = ChaCha20Rng::seed_from_u64(0u64);
+			let proof = DLEQProof::new(x, generator, pk, vec![], rng);
+			let mut proof_bytes = Vec::new();
+			proof.serialize_compressed(&mut proof_bytes).unwrap();
+			// (rG, rH, [xG ~ sQ_{id}], xH, w)
 			let pre_digest = PreDigest {
 				slot: slot, 
-				secret: convert_to_bytes::<K, 48>(d)
-					.try_into().expect("The slot secret should be valid; qed;"),
-				proof: (
-					convert_to_bytes::<K, 48>(proof.commitment_1)
-						.try_into().expect("The proof should be valid; qed;"),
-					convert_to_bytes::<K, 48>(proof.commitment_2)
-						.try_into().expect("The proof should be valid; qed;"),
-					convert_to_bytes::<Fr, 32>(proof.witness)
-						.try_into().expect("The proof should be valid; qed;"),
-					convert_to_bytes::<K, 48>(proof.out)
-						.try_into().expect("The proof should be valid; qed;"),
-				),
+				proof: proof_bytes.try_into().expect("should be 244 bytes; qed"),
 			};
 			Some((pre_digest.clone(), p.clone()))
 		} else {
@@ -221,9 +219,8 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 ) -> Result<PreDigest, PreDigestLookupError> {
 	if header.number().is_zero() {
 		return Ok(PreDigest{ 
-			slot: 0.into(), 
-			secret: [0;48],
-			proof: ([0;48], [0;48], [0;32], [0;48]),
+			slot: 0.into(),
+			proof: [0;224],
 		});
 	}
 
@@ -369,29 +366,20 @@ where
 		// verify the DLEQ proof
 		let expected_author =
 			slot_author::<P>(slot, authorities).ok_or(SealVerificationError::SlotAuthorNotFound)?;
-		let secret_bytes = claim.secret;
-
 		// let mut id = expected_author.to_raw_vec();
 		let s = u64::from(slot);
 		let id = s.to_string().as_bytes().to_vec();
-
-		let d: K = K::deserialize_compressed(&secret_bytes[..])
-			.map_err(|_| SealVerificationError::BadSignature)?;
-		let pk: K = K::deserialize_compressed(&g[..])
+		let pk = hash_to_g1(&id);
+		let generator: K = K::deserialize_compressed(&g[..])
 			.expect("The runtime should contain a valid point in G1; qed;");
-		let p = claim.proof;
-		// DRIEMWORKS:: This could be cleaned up but it's fine for now
-		let proof = DLEQProof {
-			commitment_1: convert_from_bytes::<K, 48>(&p.0).ok_or(K::generator()).unwrap(),
-			commitment_2: convert_from_bytes::<K, 48>(&p.1).ok_or(K::generator()).unwrap(),
-			witness: convert_from_bytes::<Fr, 32>(&p.2).ok_or(Fr::one()).unwrap(),
-			out: convert_from_bytes::<K, 48>(&p.3).ok_or(K::generator()).unwrap(),
-		};
+		let proof_bytes = claim.proof;
+		// DRIEMWORKS todo: handle this error
+		let proof: DLEQProof = DLEQProof::deserialize_compressed(&proof_bytes[..]).unwrap();
 		// check the signature is valid under the expected authority and
 		// chain state.
 		let pre_hash = header.hash();
 
-		if DLEQProof::verify(&id, d, pk, proof) {
+		if proof.verify(generator, pk, vec![]) {
 			if P::verify(&sig, pre_hash.as_ref(), expected_author) {
 				Ok((header, claim, seal))
 			} else {
@@ -401,21 +389,6 @@ where
 			Err(SealVerificationError::InvalidDLEQProof)
 		}
 	}
-}
-
-// TODO: proper error handling
-/// a helper function to deserialize arkworks elements from bytes
-pub fn convert_from_bytes<E: CanonicalDeserialize, const N: usize>(bytes: &[u8; N]) -> Option<E> {
-	E::deserialize_compressed(&bytes[..]).ok()
-}
-
-// should it be an error instead?
-/// a helper function to serialize arkworks elements to bytes
-pub fn convert_to_bytes<E: CanonicalSerialize, const N: usize>(k: E) -> [u8;N] {
-	let mut out = Vec::with_capacity(k.compressed_size());
-	k.serialize_compressed(&mut out).unwrap_or(());
-	let o: [u8; N] = out.try_into().unwrap_or([0;N]);
-	o
 }
 
 #[cfg(test)]

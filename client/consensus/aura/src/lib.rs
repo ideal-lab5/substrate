@@ -58,8 +58,6 @@ use sp_runtime::{
 
 mod import_queue;
 pub mod standalone;
-/// dleq proof and verification
-pub mod dleq;
 
 pub use crate::standalone::{find_pre_digest, slot_duration};
 pub use import_queue::{

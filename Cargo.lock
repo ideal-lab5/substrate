@@ -341,6 +341,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-crypto-primitives"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f3a13b34da09176a8baba701233fdffbaa7c1b1192ce031a3da4e55ce1f1a56"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-relations",
+ "ark-serialize",
+ "ark-snark",
+ "ark-std",
+ "blake2",
+ "derivative",
+ "digest 0.10.7",
+ "sha2 0.10.6",
+]
+
+[[package]]
 name = "ark-ec"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -499,6 +517,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "ark-snark"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84d3cc6833a335bb8a600241889ead68ee89a3cf8448081fb7694c0fe503da63"
+dependencies = [
+ "ark-ff",
+ "ark-relations",
+ "ark-serialize",
+ "ark-std",
 ]
 
 [[package]]
@@ -1689,6 +1719,26 @@ name = "crunchy"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
+
+[[package]]
+name = "crypto"
+version = "0.1.0"
+source = "git+https://github.com/ideal-lab5/etf-sdk?branch=m3#061cb0e280506abd4c97d36a0c25ffb5c858a68e"
+dependencies = [
+ "aes-gcm 0.10.2",
+ "ark-bls12-381",
+ "ark-crypto-primitives",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "ark-std",
+ "array-bytes 6.1.0",
+ "generic-array 0.14.7",
+ "serde",
+ "sha2 0.10.6",
+ "sha3",
+]
 
 [[package]]
 name = "crypto-bigint"
@@ -5601,6 +5651,7 @@ dependencies = [
  "futures",
  "jsonrpsee",
  "node-template-runtime",
+ "pallet-contracts",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
  "sc-basic-authorship",
@@ -5665,6 +5716,8 @@ dependencies = [
  "log",
  "pallet-aura",
  "pallet-balances",
+ "pallet-contracts",
+ "pallet-contracts-primitives",
  "pallet-etf",
  "pallet-grandpa",
  "pallet-insecure-randomness-collective-flip",
@@ -9184,6 +9237,7 @@ dependencies = [
  "ark-std",
  "array-bytes 6.1.0",
  "async-trait",
+ "crypto",
  "futures",
  "getrandom 0.2.9",
  "hex",
