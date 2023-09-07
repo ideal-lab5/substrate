@@ -11,7 +11,7 @@ use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
-	RuntimeAppPublic,
+	DispatchError, RuntimeAppPublic,
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdLookup, BlakeTwo256, Block as BlockT, 
@@ -20,11 +20,22 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
+use frame_support::traits::AsEnsureOriginWithArg;
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
+	EnsureSigned,
 };
 use codec::{Encode, Decode};
 use sp_std::prelude::*;
+use pallet_contracts::chain_extension::{
+    ChainExtension,
+    Environment,
+    Ext,
+    InitState,
+    RetVal,
+    SysConfig,
+};
+use sp_core::crypto::UncheckedFrom;
 
 #[cfg(feature = "runtime-benchmarks")]
 use pallet_contracts::NoopMigration;
@@ -355,6 +366,35 @@ impl pallet_sudo::Config for Runtime {
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
 
 parameter_types! {
+	pub const AssetDeposit: Balance = 100 * DOLLARS;
+	pub const ApprovalDeposit: Balance = 1 * DOLLARS;
+	pub const StringLimit: u32 = 50;
+	pub const MetadataDepositBase: Balance = 10 * DOLLARS;
+	pub const MetadataDepositPerByte: Balance = 1 * DOLLARS;
+}
+
+impl pallet_assets::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = u128;
+	type AssetId = u32;
+	type AssetIdParameter = codec::Compact<u32>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
+	type AssetDeposit = AssetDeposit;
+	type AssetAccountDeposit = ConstU128<DOLLARS>;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = StringLimit;
+	type Freezer = ();
+	type Extra = ();
+	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type CallbackHandle = ();
+}
+
+parameter_types! {
 	pub const DepositPerItem: Balance = deposit(1, 0);
 	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
@@ -388,7 +428,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	type ChainExtension = ETFExtension;
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	// This node is geared towards development and testing of contracts.
@@ -430,6 +470,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		Etf: pallet_etf,
 		Contracts: pallet_contracts,
+		Assets: pallet_assets,
 		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
 	}
 );
@@ -808,4 +849,52 @@ impl_runtime_apis! {
 			Executive::try_execute_block(block, state_root_check, signature_check, select).expect("execute-block failed")
 		}
 	}
+}
+
+#[derive(Default)]
+pub struct ETFExtension;
+
+impl ChainExtension<Runtime> for ETFExtension {
+	
+    fn call<E: Ext>(
+        &mut self,
+        env: Environment<E, InitState>,
+    ) -> Result<RetVal, DispatchError>
+    where
+        <E::T as SysConfig>::AccountId:
+            UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+    {
+		let func_id = env.func_id();
+		log::trace!(
+			target: "runtime",
+			"[ChainExtension]|call|func_id:{:}",
+			func_id
+		);
+        match func_id {	
+			// check if the provided slot has a block in it 
+            1101 => {
+                let mut env = env.buf_in_buf_out();
+				let slot: u32 = env.read_as()?;
+				// get current slot from AURA pallet
+				let current_slot = Aura::current_slot();
+				let is_block_authored: bool = current_slot > slot;
+				let out: Vec<u8> = match is_block_authored {
+					true => vec![1u8],
+					false => vec![0u8],
+				};
+				env.write(&out, false, None).map_err(|_| {
+                    DispatchError::Other("ChainExtension failed to query AURA pallet")
+                })?;
+				Ok(RetVal::Converging(0))
+            },
+            _ => {
+                log::error!("Called an unregistered `func_id`: {:}", func_id);
+                Err(DispatchError::Other("Unimplemented func_id"))
+            }
+        }
+    }
+
+    fn enabled() -> bool {
+        true
+    }
 }
