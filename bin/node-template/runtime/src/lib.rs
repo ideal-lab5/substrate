@@ -130,6 +130,13 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	state_version: 1,
 };
 
+// Prints debug output of the `contracts` pallet to stdout if the node is
+// started with `-lruntime::contracts=debug`.
+const CONTRACTS_DEBUG_OUTPUT: pallet_contracts::DebugInfo =
+	pallet_contracts::DebugInfo::UnsafeDebug;
+const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
+	pallet_contracts::CollectEvents::UnsafeCollect;
+
 /// This determines the average expected block time that we are targeting.
 /// Blocks will be produced at a minimum duration defined by `SLOT_DURATION`.
 /// `SLOT_DURATION` is picked up by `pallet_timestamp` which is in turn picked
@@ -153,9 +160,18 @@ pub const CENTS: Balance = 1_000 * MILLICENTS;
 pub const DOLLARS: Balance = 100 * CENTS;
 
 const fn deposit(items: u32, bytes: u32) -> Balance {
-    items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
+	(items as Balance * CENTS + (bytes as Balance) * (5 * MILLICENTS / 100)) / 10
 }
 
+fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
+	pallet_contracts::Schedule {
+		limits: pallet_contracts::Limits {
+			runtime_memory: 1024 * 1024 * 1024,
+			..Default::default()
+		},
+		..Default::default()
+	}
+}
 /// We assume that ~10% of the block weight is consumed by `on_initialize` handlers.
 /// This is used to limit the maximal weight of a single extrinsic.
 const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
@@ -342,7 +358,15 @@ parameter_types! {
 	pub const DepositPerItem: Balance = deposit(1, 0);
 	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
-	pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
+	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
+}
+
+pub enum AllowBalancesCall {}
+
+impl frame_support::traits::Contains<RuntimeCall> for AllowBalancesCall {
+	fn contains(call: &RuntimeCall) -> bool {
+		matches!(call, RuntimeCall::Balances(BalancesCall::transfer_allow_death { .. }))
+	}
 }
 
 impl pallet_contracts::Config for Runtime {
@@ -351,30 +375,36 @@ impl pallet_contracts::Config for Runtime {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
+
 	/// The safest default is to allow no calls at all.
 	///
 	/// Runtimes should whitelist dispatchables that are allowed to be called from contracts
 	/// and make sure they are stable. Dispatchables exposed to contracts are not allowed to
-	/// change because that would break already deployed contracts. The `Call` structure itself
-	/// is not allowed to change the indices of existing pallets, too.
-	type CallFilter = Nothing;
+	/// change because that would break already deployed contracts. The `RuntimeCall` structure
+	/// itself is not allowed to change the indices of existing pallets, too.
+	type CallFilter = AllowBalancesCall;
 	type DepositPerItem = DepositPerItem;
 	type DepositPerByte = DepositPerByte;
-	type DefaultDepositLimit = DefaultDepositLimit;
-	type CallStack = [pallet_contracts::Frame<Self>; 5];
+	type CallStack = [pallet_contracts::Frame<Self>; 23];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
 	type ChainExtension = ();
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
+	// This node is geared towards development and testing of contracts.
+	// We decided to increase the default allowed contract size for this
+	// reason (the default is `128 * 1024`).
+	//
+	// Our reasoning is that the error code `CodeTooLarge` is thrown
+	// if a too-large contract is uploaded. We noticed that it poses
+	// less friction during development when the requirement here is
+	// just more lax.
+	type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
+	type DefaultDepositLimit = DefaultDepositLimit;
 	type MaxStorageKeyLen = ConstU32<128>;
-	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	#[cfg(not(feature = "runtime-benchmarks"))]
+	type UnsafeUnstableInterface = ConstBool<true>;
 	type Migrations = ();
-	#[cfg(feature = "runtime-benchmarks")]
-	type Migrations = (NoopMigration<1>, NoopMigration<2>);
 }
 
 impl pallet_etf::Config for Runtime {
@@ -434,6 +464,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
+	pallet_contracts::Migration<Runtime>,
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -648,7 +679,8 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> for Runtime
+	impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord> 
+		for Runtime
 	{
 		fn call(
 			origin: AccountId,
@@ -666,8 +698,8 @@ impl_runtime_apis! {
 				gas_limit,
 				storage_deposit_limit,
 				input_data,
-				pallet_contracts::DebugInfo::UnsafeDebug,
-				pallet_contracts::CollectEvents::UnsafeCollect,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
 				pallet_contracts::Determinism::Enforced,
 			)
 		}
@@ -691,8 +723,8 @@ impl_runtime_apis! {
 				code,
 				data,
 				salt,
-				pallet_contracts::DebugInfo::UnsafeDebug,
-				pallet_contracts::CollectEvents::UnsafeCollect,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
 			)
 		}
 
@@ -703,22 +735,14 @@ impl_runtime_apis! {
 			determinism: pallet_contracts::Determinism,
 		) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance>
 		{
-			Contracts::bare_upload_code(
-				origin,
-				code,
-				storage_deposit_limit,
-				determinism,
-			)
+			Contracts::bare_upload_code(origin, code, storage_deposit_limit, determinism)
 		}
 
 		fn get_storage(
 			address: AccountId,
 			key: Vec<u8>,
 		) -> pallet_contracts_primitives::GetStorageResult {
-			Contracts::get_storage(
-				address,
-				key
-			)
+			Contracts::get_storage(address, key)
 		}
 	}
 
