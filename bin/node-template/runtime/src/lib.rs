@@ -166,12 +166,12 @@ pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 
 // Contracts price units.
-pub const MILLICENTS: Balance = 1_000_000_000;
+pub const MILLICENTS: Balance = 1_000_000;
 pub const CENTS: Balance = 1_000 * MILLICENTS;
 pub const DOLLARS: Balance = 100 * CENTS;
 
 const fn deposit(items: u32, bytes: u32) -> Balance {
-	(items as Balance * CENTS + (bytes as Balance) * (5 * MILLICENTS / 100)) / 10
+	(items as Balance * CENTS + (bytes as Balance) * (5 * MILLICENTS / 100)) / 100
 }
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
@@ -887,6 +887,17 @@ impl ChainExtension<Runtime> for ETFExtension {
                 })?;
 				Ok(RetVal::Converging(0))
             },
+			// transfer the asset id to the specified acct
+			2101 => {
+				let mut env = env.buf_in_buf_out();
+				let (caller, recipient, asset_id, amount): (AccountId,  AccountId, u32, u128) = env.read_as()?;
+				let origin: RuntimeOrigin = frame_system::RawOrigin::Signed(caller).into();
+				let _ = Assets::transfer(origin, codec::Compact(asset_id), sp_runtime::MultiAddress::Id(recipient), amount)
+					.map_err(|_| {
+						DispatchError::Other("Asset transfer failed")
+					})?;
+				Ok(RetVal::Converging(0))
+			},
             _ => {
                 log::error!("Called an unregistered `func_id`: {:}", func_id);
                 Err(DispatchError::Other("Unimplemented func_id"))
