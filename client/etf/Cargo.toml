@@ -23,4 +23,3 @@ sp-core = { version = "21.0.0", path = "../../primitives/core" }
 sp-rpc = { version = "6.0.0", path = "../../primitives/rpc" }
 sp-consensus-slots = { version = "0.10.0-dev", path = "../../primitives/consensus/slots" }
 sp-runtime = { version = "24.0.0", path = "../../primitives/runtime" }
-sp-consensus-etf = { version = "0.10.0-dev", path = "../../primitives/consensus/etf" }

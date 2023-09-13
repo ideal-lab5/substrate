@@ -202,31 +202,31 @@ parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
 	pub const Version: RuntimeVersion = VERSION;
 	/// We allow for 2 seconds of compute with a 6 second average block time.
-	// pub BlockWeights: BlockWeights =
-	// 	BlockWeights::with_sensible_defaults(
-	// 		Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
-	// 		NORMAL_DISPATCH_RATIO,
-	// 	);
+	pub RuntimeBlockWeights: BlockWeights =
+		BlockWeights::with_sensible_defaults(
+			Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
+			NORMAL_DISPATCH_RATIO,
+		);
 	pub RuntimeBlockLength: BlockLength = BlockLength
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
-		.base_block(BlockExecutionWeight::get())
-		.for_class(DispatchClass::all(), |weights| {
-			weights.base_extrinsic = ExtrinsicBaseWeight::get();
-		})
-		.for_class(DispatchClass::Normal, |weights| {
-			weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
-		})
-		.for_class(DispatchClass::Operational, |weights| {
-			weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
-			// Operational transactions have some extra reserved space, so that they
-			// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
-			weights.reserved = Some(
-				MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
-			);
-		})
-		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
-		.build_or_panic();
+	// pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
+	// 	.base_block(BlockExecutionWeight::get())
+	// 	.for_class(DispatchClass::all(), |weights| {
+	// 		weights.base_extrinsic = ExtrinsicBaseWeight::get();
+	// 	})
+	// 	.for_class(DispatchClass::Normal, |weights| {
+	// 		weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
+	// 	})
+	// 	.for_class(DispatchClass::Operational, |weights| {
+	// 		weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
+	// 		// Operational transactions have some extra reserved space, so that they
+	// 		// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
+	// 		weights.reserved = Some(
+	// 			MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
+	// 		);
+	// 	})
+	// 	.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
+	// 	.build_or_panic();
 	pub const SS58Prefix: u8 = 42;
 }
 
@@ -617,17 +617,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl sp_consensus_etf::EtfApi<Block> for Runtime {
-		fn identity(slot: sp_consensus_slots::Slot) -> Vec<u8> {
-			let authorities = Aura::authorities().into_inner();
-			let s = u64::from(slot);
-			let author: &AuraId = &authorities[s as usize % authorities.len()];
-			let mut id = author.to_raw_vec();
-			id.append(&mut s.to_string().as_bytes().to_vec());
-			id.into()
-		}
-	}
-
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
 			opaque::SessionKeys::generate(seed)
@@ -854,6 +843,10 @@ impl_runtime_apis! {
 #[derive(Default)]
 pub struct ETFExtension;
 
+use sp_runtime::{
+	traits::TrailingZeroInput,
+};
+
 impl ChainExtension<Runtime> for ETFExtension {
 	
     fn call<E: Ext>(
@@ -887,6 +880,35 @@ impl ChainExtension<Runtime> for ETFExtension {
                 })?;
 				Ok(RetVal::Converging(0))
             },
+			// check if the provided tx is valid
+			// and return the call data
+			1102 => {
+				let mut env = env.buf_in_buf_out();
+				let tx_bytes: sp_runtime::BoundedVec<u8, ConstU32<256>> = env.read_as()?;
+				let source = TransactionSource::External;
+				let extrinsic = UncheckedExtrinsic::decode(&mut TrailingZeroInput::new(&tx_bytes)).unwrap();
+				// check validity
+				// see client/transaction-pool/README.md for nice definitions
+				match Executive::validate_transaction(
+					source,
+					extrinsic.clone(),
+					frame_system::BlockHash::<Runtime>::get(0), // genesis 
+				) {
+					Ok(valid_tx) => {
+						let author = extrinsic.clone().signature.clone().unwrap().0;
+						let call = extrinsic.clone().function;
+						
+						env.write(&extrinsic.encode(), false, None).map_err(|_| {
+							DispatchError::Other("ChainExtension failed to query AURA pallet")
+						})?;
+					},
+					Err(err) => {
+						// TransactionValidityError
+						return Err(DispatchError::Other("InvalidTransaction"));
+					}
+				}
+				Ok(RetVal::Converging(0))
+			},
 			// transfer the asset id to the specified acct
 			2101 => {
 				let mut env = env.buf_in_buf_out();

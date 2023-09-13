@@ -195,7 +195,6 @@ members = [
 	"primitives/consensus/babe",
 	"primitives/consensus/beefy",
 	"primitives/consensus/common",
-	"primitives/consensus/etf",
 	"primitives/consensus/grandpa",
 	"primitives/consensus/pow",
 	"primitives/consensus/slots",

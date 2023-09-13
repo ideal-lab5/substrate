@@ -2461,23 +2461,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "etf-rpc"
-version = "0.10.0"
-dependencies = [
- "jsonrpsee",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-consensus-etf",
- "sp-consensus-slots",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5644,7 +5627,6 @@ version = "4.0.0-dev"
 dependencies = [
  "array-bytes 4.2.0",
  "clap 4.3.2",
- "etf-rpc",
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "frame-system",
@@ -5675,7 +5657,6 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-aura",
- "sp-consensus-etf",
  "sp-consensus-grandpa",
  "sp-core",
  "sp-inherents",
@@ -5714,6 +5695,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "log",
+ "pallet-assets",
  "pallet-aura",
  "pallet-balances",
  "pallet-contracts",
@@ -5730,7 +5712,6 @@ dependencies = [
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
- "sp-consensus-etf",
  "sp-consensus-grandpa",
  "sp-consensus-slots",
  "sp-core",
@@ -11192,16 +11173,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "strum",
-]
-
-[[package]]
-name = "sp-consensus-etf"
-version = "0.10.0-dev"
-dependencies = [
- "sp-api",
- "sp-consensus-slots",
- "sp-core",
- "sp-std",
 ]
 
 [[package]]

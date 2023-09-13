@@ -33,7 +33,6 @@ sc-transaction-pool-api = { version = "4.0.0-dev", path = "../../../client/trans
 sc-statement-store = { version = "4.0.0-dev", path = "../../../client/statement-store" }
 sc-consensus-aura = { version = "0.10.0-dev", path = "../../../client/consensus/aura" }
 sp-consensus-aura = { version = "0.10.0-dev", path = "../../../primitives/consensus/aura" }
-sp-consensus-etf = { version = "0.10.0-dev", path = "../../../primitives/consensus/etf" }
 sp-consensus = { version = "0.10.0-dev", path = "../../../primitives/consensus/common" }
 sc-consensus = { version = "0.10.0-dev", path = "../../../client/consensus/common" }
 sc-consensus-grandpa = { version = "0.10.0-dev", path = "../../../client/consensus/grandpa" }
@@ -57,8 +56,6 @@ sp-block-builder = { version = "4.0.0-dev", path = "../../../primitives/block-bu
 sc-basic-authorship = { version = "0.10.0-dev", path = "../../../client/basic-authorship" }
 substrate-frame-rpc-system = { version = "4.0.0-dev", path = "../../../utils/frame/rpc/system" }
 pallet-transaction-payment-rpc = { version = "4.0.0-dev", path = "../../../frame/transaction-payment/rpc/" }
-#pallet-contracts-rpc = { version = "4.0.0-dev", path = "../../../frame/contracts/rpc/", branch = "polkadot-v0.9.23" }
-etf-rpc = { version = "0.10.0", path = "../../../client/etf" }
 
 # These dependencies are used for runtime benchmarking
 frame-benchmarking = { version = "4.0.0-dev", path = "../../../frame/benchmarking" }

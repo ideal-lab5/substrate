@@ -32,7 +32,6 @@ frame-executive = { version = "4.0.0-dev", default-features = false, path = "../
 sp-api = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/api" }
 sp-block-builder = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/block-builder"}
 sp-consensus-aura = { version = "0.10.0-dev", default-features = false, path = "../../../primitives/consensus/aura" }
-sp-consensus-etf = { version = "0.10.0-dev", default-features = false, path = "../../../primitives/consensus/etf" }
 sp-consensus-grandpa = { version = "4.0.0-dev", default-features = false, path = "../../../primitives/consensus/grandpa" }
 sp-consensus-slots = { version = "0.10.0-dev", default-features = false, path = "../../../primitives/consensus/slots" }
 sp-core = { version = "21.0.0", default-features = false, path = "../../../primitives/core" }
@@ -88,7 +87,6 @@ std = [
 	"sp-api/std",
 	"sp-block-builder/std",
 	"sp-consensus-aura/std",
-	"sp-consensus-etf/std",
 	"sp-consensus-grandpa/std",
 	"sp-consensus-slots/std",
 	"sp-core/std",
