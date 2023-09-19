@@ -50,6 +50,8 @@ use super::{
 	SlotDuration, 
 	LOG_TARGET,
 };
+
+use ark_std::ops::Mul;
 use ark_bls12_381::Fr;
 
 use rand_chacha::{
@@ -130,6 +132,9 @@ pub async fn claim_slot<B, P: Pair>(
 			let generator: K = convert_from_bytes::<K, 48>(g)
 				.expect("A generator of G1 should be known; qed;");
 			let pk = hash_to_g1(&id);
+			let slot_secret = pk.mul(x);
+			let mut slot_secret_bytes = Vec::new();
+			slot_secret.serialize_compressed(&mut slot_secret_bytes).expect("The secret should be valid; qed");
 			// DRIEMWORKS TODO Q: how should we get our randomness?
 			// This will be fine for now... should use a vrf?
 			let rng = ChaCha20Rng::seed_from_u64(0u64);
@@ -138,8 +143,9 @@ pub async fn claim_slot<B, P: Pair>(
 			proof.serialize_compressed(&mut proof_bytes).unwrap();
 			// (rG, rH, [xG ~ sQ_{id}], xH, w)
 			let pre_digest = PreDigest {
-				slot: slot, 
-				proof: proof_bytes.try_into().expect("should be 244 bytes; qed"),
+				slot: slot,
+				secret: slot_secret_bytes.try_into().expect("should be 48 bytes; qed"),
+				proof: proof_bytes.try_into().expect("should be 224 bytes; qed"),
 			};
 			Some((pre_digest.clone(), p.clone()))
 		} else {
@@ -220,6 +226,7 @@ pub fn find_pre_digest<B: BlockT, Signature: Codec>(
 	if header.number().is_zero() {
 		return Ok(PreDigest{ 
 			slot: 0.into(),
+			secret: [0;48],
 			proof: [0;224],
 		});
 	}

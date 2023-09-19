@@ -51,8 +51,7 @@ pub mod pallet {
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
-	/// this value is only used in DLEQ proofs
-	/// in fact, I think I'll remove it...
+	/// dleq param (generator) (G1), p (G2), p_pub (G2)
 	#[pallet::storage]
 	pub type IBEParams<T: Config> = StorageValue<
 		_, (Vec<u8>, Vec<u8>, Vec<u8>), ValueQuery,

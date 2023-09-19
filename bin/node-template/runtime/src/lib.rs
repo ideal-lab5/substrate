@@ -154,7 +154,7 @@ const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
 /// up by `pallet_aura` to implement `fn slot_duration()`.
 ///
 /// Change this to adjust the block time.
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const MILLISECS_PER_BLOCK: u64 = 10000;
 
 // NOTE: Currently it is not possible to change the slot duration after the chain has started.
 //       Attempting to do so will brick block production.
@@ -177,7 +177,7 @@ const fn deposit(items: u32, bytes: u32) -> Balance {
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 	pallet_contracts::Schedule {
 		limits: pallet_contracts::Limits {
-			runtime_memory: 1024 * 1024 * 1024,
+			runtime_memory: 1024 * 1024 * 1024 * 2,
 			..Default::default()
 		},
 		..Default::default()
@@ -186,9 +186,9 @@ fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 /// We assume that ~10% of the block weight is consumed by `on_initialize` handlers.
 /// This is used to limit the maximal weight of a single extrinsic.
 const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
-/// We allow for 2 seconds of compute with a 6 second average block time, with maximum proof size.
+/// We allow for 4 seconds of compute with a 12 second average block time, with maximum proof size.
 const MAXIMUM_BLOCK_WEIGHT: Weight =
-	Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), u64::MAX);
+	Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(4), u64::MAX);
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -395,9 +395,9 @@ impl pallet_assets::Config for Runtime {
 }
 
 parameter_types! {
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
-	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
+	pub const DepositPerItem: Balance = deposit(0, 1);
+	pub const DepositPerByte: Balance = deposit(1, 0);
+	pub const DefaultDepositLimit: Balance = deposit(128 * 1024, 2 * 1024 * 1024);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
 }
 
@@ -867,12 +867,12 @@ impl ChainExtension<Runtime> for ETFExtension {
 			// check if the provided slot has a block in it 
             1101 => {
                 let mut env = env.buf_in_buf_out();
-				let slot: u32 = env.read_as()?;
+				let slot: u64 = env.read_as()?;
 				// get current slot from AURA pallet
 				let current_slot = Aura::current_slot();
-				let is_block_authored: bool = current_slot > slot;
+				let is_block_authored: bool = current_slot >= slot;
 				let out: Vec<u8> = match is_block_authored {
-					true => vec![1u8],
+					true => true.encode(),
 					false => vec![0u8],
 				};
 				env.write(&out, false, None).map_err(|_| {
@@ -880,35 +880,6 @@ impl ChainExtension<Runtime> for ETFExtension {
                 })?;
 				Ok(RetVal::Converging(0))
             },
-			// check if the provided tx is valid
-			// and return the call data
-			1102 => {
-				let mut env = env.buf_in_buf_out();
-				let tx_bytes: sp_runtime::BoundedVec<u8, ConstU32<256>> = env.read_as()?;
-				let source = TransactionSource::External;
-				let extrinsic = UncheckedExtrinsic::decode(&mut TrailingZeroInput::new(&tx_bytes)).unwrap();
-				// check validity
-				// see client/transaction-pool/README.md for nice definitions
-				match Executive::validate_transaction(
-					source,
-					extrinsic.clone(),
-					frame_system::BlockHash::<Runtime>::get(0), // genesis 
-				) {
-					Ok(valid_tx) => {
-						let author = extrinsic.clone().signature.clone().unwrap().0;
-						let call = extrinsic.clone().function;
-						
-						env.write(&extrinsic.encode(), false, None).map_err(|_| {
-							DispatchError::Other("ChainExtension failed to query AURA pallet")
-						})?;
-					},
-					Err(err) => {
-						// TransactionValidityError
-						return Err(DispatchError::Other("InvalidTransaction"));
-					}
-				}
-				Ok(RetVal::Converging(0))
-			},
 			// transfer the asset id to the specified acct
 			2101 => {
 				let mut env = env.buf_in_buf_out();

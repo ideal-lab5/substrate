@@ -38,7 +38,9 @@ pub struct PreDigest {
 	// pub authority_index: super::AuthorityIndex,
 	/// Slot
 	pub slot: Slot,
-	/// the slot secret
+	/// the slot secret 
+	pub secret: [u8;48],
+	/// the slot secret DLEQ proof
 	pub proof: [u8;224],
 }
 
