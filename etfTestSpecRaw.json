@@ -1,13 +1,17 @@
 {
-  "name": "Local Testnet",
-  "id": "local_testnet",
-  "chainType": "Local",
+  "name": ":Live Testnet",
+  "id": "live_testnet",
+  "chainType": "Development",
   "bootNodes": [
-    "/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWGh9bAi2BNy4XHUUH6v8HTkKULxAf87JYqRu6aLP7dGsa"
+    "/dns/etf0.idealabs.network/tcp/30334/wss/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
   ],
   "telemetryEndpoints": null,
-  "protocolId": null,
-  "properties": null,
+  "protocolId": "ETF",
+  "properties": {
+    "ss58Format": 2,
+    "tokenDecimals": 12,
+    "tokenSymbol": "ETF"
+  },
   "codeSubstitutes": {},
   "genesis": {
     "raw": {
