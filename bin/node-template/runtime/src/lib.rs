@@ -11,7 +11,7 @@ use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
-	DispatchError, RuntimeAppPublic,
+	DispatchError,
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
 		AccountIdLookup, BlakeTwo256, Block as BlockT, 
@@ -43,7 +43,6 @@ use pallet_contracts::NoopMigration;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use codec::{alloc::string::ToString};
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -202,31 +201,31 @@ parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
 	pub const Version: RuntimeVersion = VERSION;
 	/// We allow for 2 seconds of compute with a 6 second average block time.
-	pub RuntimeBlockWeights: BlockWeights =
-		BlockWeights::with_sensible_defaults(
-			Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
-			NORMAL_DISPATCH_RATIO,
-		);
+	// pub RuntimeBlockWeights: BlockWeights =
+	// 	BlockWeights::with_sensible_defaults(
+	// 		Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
+	// 		NORMAL_DISPATCH_RATIO,
+	// 	);
 	pub RuntimeBlockLength: BlockLength = BlockLength
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	// pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
-	// 	.base_block(BlockExecutionWeight::get())
-	// 	.for_class(DispatchClass::all(), |weights| {
-	// 		weights.base_extrinsic = ExtrinsicBaseWeight::get();
-	// 	})
-	// 	.for_class(DispatchClass::Normal, |weights| {
-	// 		weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
-	// 	})
-	// 	.for_class(DispatchClass::Operational, |weights| {
-	// 		weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
-	// 		// Operational transactions have some extra reserved space, so that they
-	// 		// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
-	// 		weights.reserved = Some(
-	// 			MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
-	// 		);
-	// 	})
-	// 	.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
-	// 	.build_or_panic();
+	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
+		.base_block(BlockExecutionWeight::get())
+		.for_class(DispatchClass::all(), |weights| {
+			weights.base_extrinsic = ExtrinsicBaseWeight::get();
+		})
+		.for_class(DispatchClass::Normal, |weights| {
+			weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
+		})
+		.for_class(DispatchClass::Operational, |weights| {
+			weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
+			// Operational transactions have some extra reserved space, so that they
+			// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
+			weights.reserved = Some(
+				MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
+			);
+		})
+		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
+		.build_or_panic();
 	pub const SS58Prefix: u8 = 42;
 }
 
@@ -842,10 +841,6 @@ impl_runtime_apis! {
 
 #[derive(Default)]
 pub struct ETFExtension;
-
-use sp_runtime::{
-	traits::TrailingZeroInput,
-};
 
 impl ChainExtension<Runtime> for ETFExtension {
 	

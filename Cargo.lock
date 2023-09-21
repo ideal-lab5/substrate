@@ -1721,26 +1721,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
-name = "crypto"
-version = "0.1.0"
-source = "git+https://github.com/ideal-lab5/etf-sdk?branch=m3#061cb0e280506abd4c97d36a0c25ffb5c858a68e"
-dependencies = [
- "aes-gcm 0.10.2",
- "ark-bls12-381",
- "ark-crypto-primitives",
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "ark-std",
- "array-bytes 6.1.0",
- "generic-array 0.14.7",
- "serde",
- "sha2 0.10.6",
- "sha3",
-]
-
-[[package]]
 name = "crypto-bigint"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2458,6 +2438,28 @@ checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "etf-crypto-primitives"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8706e314c5cde566bddb6f2de62a99b3c741f41fba723609e58ab8f9f350e3d"
+dependencies = [
+ "aes-gcm 0.10.2",
+ "ark-bls12-381",
+ "ark-crypto-primitives",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "ark-std",
+ "array-bytes 6.1.0",
+ "generic-array 0.14.7",
+ "parity-scale-codec",
+ "serde",
+ "sha2 0.10.6",
+ "sha3",
 ]
 
 [[package]]
@@ -9218,7 +9220,7 @@ dependencies = [
  "ark-std",
  "array-bytes 6.1.0",
  "async-trait",
- "crypto",
+ "etf-crypto-primitives",
  "futures",
  "getrandom 0.2.9",
  "hex",

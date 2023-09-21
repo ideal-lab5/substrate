@@ -59,7 +59,7 @@ use rand_chacha::{
 	rand_core::SeedableRng,
 };
 
-use crypto::{
+use etf_crypto_primitives::{
 	utils::{convert_from_bytes, hash_to_g1},
 	proofs::dleq::DLEQProof
 };

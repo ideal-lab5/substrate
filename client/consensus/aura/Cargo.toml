@@ -45,7 +45,7 @@ sp-core = { version = "21.0.0", path = "../../../primitives/core" }
 sp-inherents = { version = "4.0.0-dev", path = "../../../primitives/inherents" }
 sp-keystore = { version = "0.27.0", path = "../../../primitives/keystore" }
 sp-runtime = { version = "24.0.0", path = "../../../primitives/runtime" }
-crypto = { git = "https://github.com/ideal-lab5/etf-sdk", branch = "m3" }
+etf-crypto-primitives = { version = "0.2.0", default-features = false }
 
 [dev-dependencies]
 array-bytes = "6.1"
