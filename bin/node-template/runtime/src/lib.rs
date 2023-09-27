@@ -863,29 +863,14 @@ impl ChainExtension<Runtime> for ETFExtension {
             1101 => {
                 let mut env = env.buf_in_buf_out();
 				let slot: u64 = env.read_as()?;
-				// get current slot from AURA pallet
+				// get current slot from AURA
 				let current_slot = Aura::current_slot();
-				let is_block_authored: bool = current_slot >= slot;
-				let out: Vec<u8> = match is_block_authored {
-					true => true.encode(),
-					false => vec![0u8],
-				};
-				env.write(&out, false, None).map_err(|_| {
+				let is_block_authored: bool = current_slot < slot;
+				env.write(&is_block_authored, false, None).map_err(|_| {
                     DispatchError::Other("ChainExtension failed to query AURA pallet")
                 })?;
 				Ok(RetVal::Converging(0))
             },
-			// transfer the asset id to the specified acct
-			2101 => {
-				let mut env = env.buf_in_buf_out();
-				let (caller, recipient, asset_id, amount): (AccountId,  AccountId, u32, u128) = env.read_as()?;
-				let origin: RuntimeOrigin = frame_system::RawOrigin::Signed(caller).into();
-				let _ = Assets::transfer(origin, codec::Compact(asset_id), sp_runtime::MultiAddress::Id(recipient), amount)
-					.map_err(|_| {
-						DispatchError::Other("Asset transfer failed")
-					})?;
-				Ok(RetVal::Converging(0))
-			},
             _ => {
                 log::error!("Called an unregistered `func_id`: {:}", func_id);
                 Err(DispatchError::Other("Unimplemented func_id"))
