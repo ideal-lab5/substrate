@@ -866,7 +866,7 @@ impl ChainExtension<Runtime> for ETFExtension {
 				// get current slot from AURA
 				let current_slot = Aura::current_slot();
 				let is_block_authored: bool = current_slot < slot;
-				env.write(&is_block_authored, false, None).map_err(|_| {
+				env.write(&is_block_authored.encode(), false, None).map_err(|_| {
                     DispatchError::Other("ChainExtension failed to query AURA pallet")
                 })?;
 				Ok(RetVal::Converging(0))
